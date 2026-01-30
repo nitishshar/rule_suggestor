@@ -47,6 +47,7 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   generatedDrools = signal('');
   deviationWarning = signal<string | null>(null);
   savedRuleDisplay = signal<TokenizedRule | null>(null);
+  isDarkTheme = signal(true);
 
   tokenized = computed(() => {
     const cfg = this.config();
@@ -65,6 +66,16 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.configService.getConfig().subscribe((c) => this.config.set(c));
+    
+    // Load saved theme preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      this.isDarkTheme.set(false);
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      this.isDarkTheme.set(true);
+      document.documentElement.removeAttribute('data-theme');
+    }
   }
 
   ngAfterViewInit(): void {
@@ -229,6 +240,21 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   toggleSamples(): void {
     this.showSamples.update((v) => !v);
     if (this.showSamples()) this.showInfoPanel.set(false);
+  }
+
+  toggleTheme(): void {
+    const newTheme = !this.isDarkTheme();
+    this.isDarkTheme.set(newTheme);
+    
+    if (newTheme) {
+      // Switch to dark theme
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      // Switch to light theme
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('theme', 'light');
+    }
   }
 
   applySample(sample: { ruleText: string }): void {
