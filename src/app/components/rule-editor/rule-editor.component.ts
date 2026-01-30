@@ -58,6 +58,12 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
 
   formattedTokens = computed(() => this.tokenized()?.tokens ?? []);
 
+  bracketWarning = computed(() => {
+    const raw = this.rawText();
+    const result = this.validateBrackets(raw);
+    return result.valid ? null : result.message;
+  });
+
   ngOnInit(): void {
     this.configService.getConfig().subscribe((c) => this.config.set(c));
   }
@@ -65,7 +71,7 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnDestroy(): void {
     const el = this.inputEl?.nativeElement;
     if (el) {
-      el.removeEventListener('keydown', this.keydownRef);
+      el.removeEventListener('keydown', this.keydownRef, true);
     }
   }
 
@@ -74,7 +80,8 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   ngAfterViewInit(): void {
     const el = this.inputEl?.nativeElement;
     if (el) {
-      el.addEventListener('keydown', this.keydownRef);
+      // Use capture phase to intercept Enter before textarea handles it
+      el.addEventListener('keydown', this.keydownRef, true);
     }
   }
 
@@ -109,6 +116,28 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     }, 200);
   }
 
+  onEnter(e: Event): void {
+    const suggestions = this.suggestions();
+    if (this.showSuggestions() && suggestions.length > 0) {
+      e.preventDefault();
+      const idx = this.selectedIndex();
+      if (idx >= 0 && idx < suggestions.length) {
+        this.applySuggestion(suggestions[idx]);
+      }
+    }
+  }
+
+  onTab(e: Event): void {
+    const suggestions = this.suggestions();
+    if (this.showSuggestions() && suggestions.length > 0) {
+      e.preventDefault();
+      const idx = this.selectedIndex();
+      if (idx >= 0 && idx < suggestions.length) {
+        this.applySuggestion(suggestions[idx]);
+      }
+    }
+  }
+
   private updateSuggestions(fullText: string, cursor: number): void {
     const cfg = this.config();
     if (!cfg) return;
@@ -122,31 +151,38 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private handleKeyDown(e: KeyboardEvent): void {
-    if (!this.showSuggestions() || this.suggestions().length === 0) return;
-    const list = this.suggestionList?.nativeElement;
+    const suggestions = this.suggestions();
+    const hasSuggestions = this.showSuggestions() && suggestions.length > 0;
+    
+    // Intercept Enter and Tab when suggestions are visible
+    if ((e.key === 'Enter' || e.key === 'Tab') && hasSuggestions) {
+      e.preventDefault();
+      e.stopPropagation();
+      const idx = this.selectedIndex();
+      if (idx >= 0 && idx < suggestions.length) {
+        this.applySuggestion(suggestions[idx]);
+      }
+      return;
+    }
+
+    // Other keys only when suggestions are visible
+    if (!hasSuggestions) return;
     const idx = this.selectedIndex();
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      this.selectedIndex.set((idx + 1) % this.suggestions().length);
+      this.selectedIndex.set((idx + 1) % suggestions.length);
       this.scrollSelectedIntoView();
       return;
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      this.selectedIndex.set(idx === 0 ? this.suggestions().length - 1 : idx - 1);
+      this.selectedIndex.set(idx === 0 ? suggestions.length - 1 : idx - 1);
       this.scrollSelectedIntoView();
       return;
     }
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      const items = this.suggestions();
-      if (idx >= 0 && idx < items.length) {
-        this.applySuggestion(items[idx]);
-      }
-      return;
-    }
     if (e.key === 'Escape') {
+      e.preventDefault();
       this.showSuggestions.set(false);
     }
   }
@@ -171,7 +207,7 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     const prefix = this.suggestionPrefix();
 
     let insert = item.insertText;
-    if (prefix && (item.kind === 'dataElement' || item.kind === 'phrase' || item.kind === 'operator')) {
+    if (prefix && (item.kind === 'dataElement' || item.kind === 'phrase' || item.kind === 'operator' || item.kind === 'connector')) {
       const beforeWithoutPrefix = before.slice(0, before.length - prefix.length);
       const newBefore = beforeWithoutPrefix + insert;
       const newText = newBefore + after;
@@ -219,16 +255,39 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     const tok = this.tokenized();
     if (!cfg || !tok) return;
 
-    const result = this.patternMatch.checkPattern(tok.tokens, cfg);
-    if (!result.matched && result.deviationReason) {
-      this.deviationWarning.set(result.deviationReason);
+    const bracketResult = this.validateBrackets(this.rawText());
+    if (!bracketResult.valid && bracketResult.message) {
+      this.deviationWarning.set(bracketResult.message);
     } else {
-      this.deviationWarning.set(null);
+      const result = this.patternMatch.checkPattern(tok.tokens, cfg);
+      if (!result.matched && result.deviationReason) {
+        this.deviationWarning.set(result.deviationReason);
+      } else {
+        this.deviationWarning.set(null);
+      }
     }
 
     const whenClause = this.droolsGenerator.generateWhenClause(tok.tokens, cfg);
     this.generatedDrools.set(whenClause);
     this.savedRuleDisplay.set(tok);
+  }
+
+  /** Validates that every ( has a matching ). */
+  validateBrackets(text: string): { valid: boolean; message?: string } {
+    let depth = 0;
+    for (const ch of text) {
+      if (ch === '(') depth++;
+      else if (ch === ')') {
+        depth--;
+        if (depth < 0) {
+          return { valid: false, message: 'Closing bracket ")" has no matching opening bracket "(".' };
+        }
+      }
+    }
+    if (depth > 0) {
+      return { valid: false, message: `${depth} opening bracket(s) "(" have no matching closing bracket(s).` };
+    }
+    return { valid: true };
   }
 
   clearWarning(): void {

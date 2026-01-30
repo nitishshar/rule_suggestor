@@ -145,7 +145,13 @@
       "id": "sample-4",
       "label": "Multiple conditions (and)",
       "ruleText": "Produce Error If <Contract Identifier> is empty and <Account Number> is null",
-      "droolsWhen": "(identifier == \"\" && accountNumber == null)"
+      "droolsWhen": "(identifier == \"\" && number == null)"
+    },
+    {
+      "id": "sample-5",
+      "label": "With free-text values",
+      "ruleText": "Produce Error If <Account Number> equals 100 and <Balance> greater than 50",
+      "droolsWhen": "number == 100 && balance > 50"
     }
   ],
   "ruleStyleReference": [

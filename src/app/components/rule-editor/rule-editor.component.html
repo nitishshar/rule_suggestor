@@ -23,6 +23,8 @@
           (input)="onInput($event)"
           (keyup)="onCursorChange($event)"
           (click)="onCursorChange($event)"
+          (keydown.enter)="onEnter($event)"
+          (keydown.tab)="onTab($event)"
           (focus)="onFocus()"
           (blur)="onBlur()"
           rows="3"
@@ -75,6 +77,10 @@
     </div>
   </div>
 
+  <div class="warning-strip" *ngIf="bracketWarning()">
+    <span class="warning-icon">⚠</span>
+    <span>{{ bracketWarning() }}</span>
+  </div>
   <div class="warning-strip" *ngIf="deviationWarning()">
     <span class="warning-icon">⚠</span>
     <span>{{ deviationWarning() }}</span>

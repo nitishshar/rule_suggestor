@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { RuleToken, DataElementToken, OperatorToken, ValueToken, ConnectorToken } from '../models/token.model';
+import { RuleToken, DataElementToken, OperatorToken, ValueToken, ConnectorToken, TextToken } from '../models/token.model';
 import { RuleSuggestorConfig } from '../models/rule-config.model';
 
 @Injectable({ providedIn: 'root' })
@@ -17,44 +17,80 @@ export class DroolsGeneratorService {
 
       if (t.type === 'dataElement') {
         const dataToken = t as DataElementToken;
-        const opToken = tokens[i + 1] as OperatorToken | undefined;
-        const valueToken = tokens[i + 2] as ValueToken | undefined;
-
-        const fieldPath = this.toDroolsFieldPath(dataToken.completeValue);
-        let condition = '';
-
-        if (opToken?.type === 'operator') {
-          const opDef = config.operators.find((o) => o.id === opToken.operatorId);
-          const droolsOp = opDef?.droolsOperator ?? opToken.symbol;
-
-          if (droolsOp === '== null') condition = `${fieldPath} == null`;
-          else if (droolsOp === '!= null') condition = `${fieldPath} != null`;
-          else if (droolsOp === 'empty') condition = `${fieldPath} == \"\"`;
-          else if (droolsOp === 'not empty') condition = `${fieldPath} != \"\"`;
-          else if (droolsOp === 'nullOrEmpty') condition = `(${fieldPath} == null || ${fieldPath} == \"\")`;
-          else if (droolsOp === 'notNullOrEmpty') condition = `(${fieldPath} != null && ${fieldPath} != \"\")`;
-          else if (droolsOp === 'length >') {
-            const val = valueToken?.type === 'value' ? valueToken.value : '0';
-            condition = `${fieldPath} != null && ${fieldPath}.length() > ${val}`;
-            i += 2;
-          } else if (droolsOp === 'length <') {
-            const val = valueToken?.type === 'value' ? valueToken.value : '0';
-            condition = `${fieldPath} != null && ${fieldPath}.length() < ${val}`;
-            i += 2;
-          } else if (valueToken?.type === 'value') {
-            const v = this.quoteIfString(valueToken.value);
-            condition = `${fieldPath} ${droolsOp} ${v}`;
-            i += 2;
-          } else {
-            condition = `${fieldPath} ${droolsOp}`;
-          }
-          i += 1;
-        } else {
-          condition = `${fieldPath} != null`;
+        i++; // consume data element
+        
+        // Skip spaces/text tokens
+        while (i < tokens.length && tokens[i].type === 'text' && tokens[i].displayText.trim() === '') {
+          i++;
         }
 
-        parts.push(condition);
-        i += 1;
+        const opToken = i < tokens.length && tokens[i].type === 'operator' ? (tokens[i] as OperatorToken) : undefined;
+        if (!opToken) {
+          parts.push(`${this.toDroolsFieldPath(dataToken.completeValue)} != null`);
+          continue;
+        }
+
+        const opDef = config.operators.find((o) => o.id === opToken.operatorId);
+        const droolsOp = opDef?.droolsOperator ?? opToken.symbol;
+        const fieldPath = this.toDroolsFieldPath(dataToken.completeValue);
+        i++; // consume operator
+
+        // Skip spaces
+        while (i < tokens.length && tokens[i].type === 'text' && tokens[i].displayText.trim() === '') {
+          i++;
+        }
+
+        // Operators that don't need a value
+        if (droolsOp === '== null') {
+          parts.push(`${fieldPath} == null`);
+          continue;
+        } else if (droolsOp === '!= null') {
+          parts.push(`${fieldPath} != null`);
+          continue;
+        } else if (droolsOp === 'empty') {
+          parts.push(`${fieldPath} == ""`);
+          continue;
+        } else if (droolsOp === 'not empty') {
+          parts.push(`${fieldPath} != ""`);
+          continue;
+        } else if (droolsOp === 'nullOrEmpty') {
+          parts.push(`(${fieldPath} == null || ${fieldPath} == "")`);
+          continue;
+        } else if (droolsOp === 'notNullOrEmpty') {
+          parts.push(`(${fieldPath} != null && ${fieldPath} != "")`);
+          continue;
+        }
+
+        // Operators that need a value: collect text/value tokens until we hit a connector or data element
+        let valueStr = '';
+        while (i < tokens.length) {
+          const tok = tokens[i];
+          // Stop at connectors or data elements
+          if (tok.type === 'connector' || tok.type === 'dataElement' || tok.type === 'operator') break;
+          // Collect text/value tokens
+          if (tok.type === 'text' || tok.type === 'value') {
+            const txt = tok.displayText.trim();
+            if (txt) {
+              valueStr += txt;
+            }
+          }
+          i++;
+        }
+
+        if (!valueStr) {
+          // No value found, just output operator (shouldn't happen for equals, >, <, etc.)
+          parts.push(`${fieldPath} ${droolsOp}`);
+          continue;
+        }
+
+        const quotedValue = this.quoteIfString(valueStr);
+        if (droolsOp === 'length >') {
+          parts.push(`${fieldPath} != null && ${fieldPath}.length() > ${quotedValue}`);
+        } else if (droolsOp === 'length <') {
+          parts.push(`${fieldPath} != null && ${fieldPath}.length() < ${quotedValue}`);
+        } else {
+          parts.push(`${fieldPath} ${droolsOp} ${quotedValue}`);
+        }
         continue;
       }
 
@@ -74,11 +110,11 @@ export class DroolsGeneratorService {
   }
 
   private toDroolsFieldPath(completeValue: string): string {
-    // e.g. "Deposits.Deposits Contract.Contract Identifier" -> getLastPart or full path
-    // For simplicity we use a camelCase last segment as typical in Drools facts.
-    const segments = completeValue.split(/\s+/);
-    const last = segments[segments.length - 1];
-    return last.replace(/\s/g, '_').replace(/-/g, '_').toLowerCase() || completeValue;
+    // e.g. "Deposits.Deposits Account.Balance" -> "balance"
+    // Split by dots and spaces to get the final field name
+    const allSegments = completeValue.split(/[\s.]+/);
+    const last = allSegments[allSegments.length - 1];
+    return last.replace(/-/g, '_').toLowerCase() || completeValue.toLowerCase();
   }
 
   private quoteIfString(val: string): string {

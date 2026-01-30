@@ -184,6 +184,27 @@ export class SuggestionService {
       return { items: this.getDataElementSuggestions(config, lastWord), prefix: lastWord };
     }
 
+    // Typing prefix of "and" or "or" after a condition (e.g. "equals 890 an") -> suggest and, or, (
+    if (trimmed.includes('>') && /^(a|an|and|o|or)$/i.test(lastWord)) {
+      const beforeLastWord = trimmed.slice(0, trimmed.length - lastWord.length).trimEnd();
+      if (beforeLastWord.length > 0) {
+        const endsWithNumber = /\d+\s*$/.test(beforeLastWord) || /\s\d+\s*$/.test(beforeLastWord);
+        const sortedOps = [...config.operators].sort(
+          (a, b) => b.displayLabel.length - a.displayLabel.length
+        );
+        const endsWithOperator = sortedOps.some(
+          (op) =>
+            beforeLastWord.endsWith(op.displayLabel) ||
+            beforeLastWord.endsWith(' ' + op.displayLabel)
+        );
+        const afterLastGt = beforeLastWord.slice(beforeLastWord.lastIndexOf('>') + 1).trim();
+        const hasOperatorAndValue = afterLastGt.split(/\s+/).length >= 2;
+        if (endsWithNumber || endsWithOperator || hasOperatorAndValue) {
+          return { items: this.getConditionCompletorSuggestions(config), prefix: lastWord };
+        }
+      }
+    }
+
     // After a condition (e.g. "...> is null" or "...> equals 0") -> suggest (, and, or
     if (trimmed.includes('>')) {
       const sortedOps = [...config.operators].sort(
