@@ -1,0 +1,104 @@
+<div class="rule-editor-wrapper" *ngIf="config() as cfg">
+  <div class="editor-header">
+    <h2 class="editor-title">Business Rule Expression</h2>
+    <div class="header-actions">
+      <button type="button" class="btn-icon" (click)="toggleInfo()" [class.active]="showInfoPanel()" title="Rule styles reference">
+        <span class="icon-info">ⓘ</span>
+      </button>
+      <button type="button" class="btn-icon" (click)="toggleSamples()" [class.active]="showSamples()" title="Sample rules">
+        Sample
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-row">
+    <div class="input-section">
+      <label class="label">Rule text</label>
+      <div class="input-wrap">
+        <textarea
+          #inputEl
+          class="rule-input"
+          placeholder="Start typing... e.g. Produce Error If"
+          [value]="rawText()"
+          (input)="onInput($event)"
+          (keyup)="onCursorChange($event)"
+          (click)="onCursorChange($event)"
+          (focus)="onFocus()"
+          (blur)="onBlur()"
+          rows="3"
+        ></textarea>
+        <!-- Formatted preview: display text only, data elements styled -->
+        <div class="formatted-preview" *ngIf="rawText()">
+          <app-rule-editor-formatter [tokens]="formattedTokens()" />
+        </div>
+      </div>
+
+      <div class="suggestion-dropdown" *ngIf="showSuggestions() && suggestions().length">
+        <ul #suggestionList class="suggestion-list">
+          <li
+            *ngFor="let item of suggestions(); trackBy: trackBySuggestion; let i = index"
+            class="suggestion-item"
+            [class.selected]="i === selectedIndex()"
+            (mousedown)="$event.preventDefault(); selectSuggestion(item)"
+          >
+            <span class="suggestion-kind" [attr.data-kind]="item.kind">{{ item.kind }}</span>
+            <span class="suggestion-text">{{ item.displayText }}</span>
+            <span class="suggestion-desc" *ngIf="item.description">{{ item.description }}</span>
+            <span class="suggestion-meta" *ngIf="item.completeValue">{{ item.completeValue }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="ref-panels">
+      <div class="info-panel panel" *ngIf="showInfoPanel()">
+        <h3>Rule styles reference</h3>
+        <div class="ref-block" *ngFor="let ref of cfg.ruleStyleReference">
+          <strong>{{ ref.title }}</strong>
+          <ul>
+            <li *ngFor="let ex of ref.examples">{{ ex }}</li>
+          </ul>
+        </div>
+      </div>
+      <div class="samples-panel panel" *ngIf="showSamples()">
+        <h3>Sample rules</h3>
+        <button
+          type="button"
+          class="sample-item"
+          *ngFor="let s of cfg.sampleRules"
+          (mousedown)="applySample(s)"
+        >
+          <span class="sample-label">{{ s.label }}</span>
+          <span class="sample-text">{{ s.ruleText }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="warning-strip" *ngIf="deviationWarning()">
+    <span class="warning-icon">⚠</span>
+    <span>{{ deviationWarning() }}</span>
+    <button type="button" class="warning-dismiss" (click)="clearWarning()">Dismiss</button>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn-primary" (click)="saveRule()">Save rule & generate Drools</button>
+  </div>
+
+  <div class="drools-section" *ngIf="generatedDrools()">
+    <label class="label">Generated Drools (when part)</label>
+    <textarea
+      class="drools-output"
+      readonly
+      [value]="generatedDrools()"
+      rows="4"
+    ></textarea>
+  </div>
+
+  <div class="saved-token-summary" *ngIf="savedRuleDisplay()">
+    <label class="label">Saved rule (tokenized)</label>
+    <app-rule-editor-formatter [tokens]="savedRuleDisplay()!.tokens" />
+  </div>
+</div>
+
+<p class="loading" *ngIf="!config()">Loading configuration…</p>

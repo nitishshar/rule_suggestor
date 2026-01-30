@@ -1,0 +1,197 @@
+{
+  "phraseSuggestions": [
+    {
+      "id": "produce-error-if",
+      "displayText": "Produce Error If",
+      "insertText": "Produce Error If ",
+      "description": "Raise an error when condition is met"
+    },
+    {
+      "id": "produce-warning-if",
+      "displayText": "Produce Warning If",
+      "insertText": "Produce Warning If ",
+      "description": "Raise a warning when condition is met"
+    },
+    {
+      "id": "reject-if",
+      "displayText": "Reject If",
+      "insertText": "Reject If ",
+      "description": "Reject record when condition is met"
+    },
+    {
+      "id": "require-that",
+      "displayText": "Require That",
+      "insertText": "Require That ",
+      "description": "Require condition to be true"
+    }
+  ],
+  "dataElements": [
+    {
+      "guid": "de-deposits-contract-id",
+      "displayValue": "Contract Identifier",
+      "completeValue": "Deposits.Deposits Contract.Contract Identifier",
+      "category": "Deposits"
+    },
+    {
+      "guid": "de-deposits-account-num",
+      "displayValue": "Account Number",
+      "completeValue": "Deposits.Deposits Account.Account Number",
+      "category": "Deposits"
+    },
+    {
+      "guid": "de-deposits-balance",
+      "displayValue": "Balance",
+      "completeValue": "Deposits.Deposits Account.Balance",
+      "category": "Deposits"
+    },
+    {
+      "guid": "de-customer-name",
+      "displayValue": "Customer Name",
+      "completeValue": "Customer.Customer Name",
+      "category": "Customer"
+    },
+    {
+      "guid": "de-customer-dob",
+      "displayValue": "Date of Birth",
+      "completeValue": "Customer.Customer Date of Birth",
+      "category": "Customer"
+    },
+    {
+      "guid": "de-transaction-amount",
+      "displayValue": "Transaction Amount",
+      "completeValue": "Transaction.Transaction Amount",
+      "category": "Transaction"
+    }
+  ],
+  "operators": [
+    { "id": "is-null", "symbol": "is null", "displayLabel": "is null", "droolsOperator": "== null", "valueTypes": ["any"] },
+    { "id": "is-not-null", "symbol": "is not null", "displayLabel": "is not null", "droolsOperator": "!= null", "valueTypes": ["any"] },
+    { "id": "eq", "symbol": "equals", "displayLabel": "equals", "droolsOperator": "==", "valueTypes": ["string", "number", "boolean", "date"] },
+    { "id": "ne", "symbol": "not equals", "displayLabel": "not equals", "droolsOperator": "!=", "valueTypes": ["string", "number", "boolean", "date"] },
+    { "id": "gt", "symbol": ">", "displayLabel": "greater than", "droolsOperator": ">", "valueTypes": ["number", "date"] },
+    { "id": "gte", "symbol": ">=", "displayLabel": "greater than or equal", "droolsOperator": ">=", "valueTypes": ["number", "date"] },
+    { "id": "lt", "symbol": "<", "displayLabel": "less than", "droolsOperator": "<", "valueTypes": ["number", "date"] },
+    { "id": "lte", "symbol": "<=", "displayLabel": "less than or equal", "droolsOperator": "<=", "valueTypes": ["number", "date"] },
+    { "id": "is-empty", "symbol": "is empty", "displayLabel": "is empty", "droolsOperator": "empty", "valueTypes": ["string"] },
+    { "id": "is-not-empty", "symbol": "is not empty", "displayLabel": "is not empty", "droolsOperator": "not empty", "valueTypes": ["string"] },
+    { "id": "is-null-or-empty", "symbol": "is null or empty", "displayLabel": "is null or empty", "droolsOperator": "nullOrEmpty", "valueTypes": ["any"] },
+    { "id": "is-not-null-or-empty", "symbol": "is not null or empty", "displayLabel": "is not null or empty", "droolsOperator": "notNullOrEmpty", "valueTypes": ["any"] },
+    { "id": "length-gt", "symbol": "length >", "displayLabel": "length greater than", "droolsOperator": "length >", "valueTypes": ["string"] },
+    { "id": "length-lt", "symbol": "length <", "displayLabel": "length less than", "droolsOperator": "length <", "valueTypes": ["string"] },
+    { "id": "in", "symbol": "in", "displayLabel": "in", "droolsOperator": "in", "valueTypes": ["any"] },
+    { "id": "not-in", "symbol": "not in", "displayLabel": "not in", "droolsOperator": "not in", "valueTypes": ["any"] }
+  ],
+  "logicalConnectors": [
+    { "id": "and", "displayText": "and", "droolsText": "&&" },
+    { "id": "or", "displayText": "or", "droolsText": "||" },
+    { "id": "openParen", "displayText": "(", "droolsText": "(" },
+    { "id": "closeParen", "displayText": ")", "droolsText": ")" },
+    { "id": "comma", "displayText": ",", "droolsText": "," }
+  ],
+  "rulePatterns": [
+    {
+      "id": "null-or-empty",
+      "name": "Null or Empty Check",
+      "description": "Produce error when a field is null or empty",
+      "exampleText": "Produce Error If <Contract Identifier> is null or empty",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "$contract : Contract( identifier == null || identifier == \"\" )"
+    },
+    {
+      "id": "length-check",
+      "name": "Length Check",
+      "description": "Produce error when length exceeds or is below threshold",
+      "exampleText": "Produce Error If <Contract Identifier> is not null or empty and length > 40",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "$contract : Contract( identifier != null && identifier.length() > 40 )"
+    },
+    {
+      "id": "equality",
+      "name": "Equality Check",
+      "description": "Produce error when value equals or not equals",
+      "exampleText": "Produce Error If <Balance> equals 0",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "$account : Account( balance == 0 )"
+    },
+    {
+      "id": "range",
+      "name": "Range / Relational",
+      "description": "Produce error when value is outside range",
+      "exampleText": "Produce Warning If <Transaction Amount> > 10000",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "$txn : Transaction( amount > 10000 )"
+    }
+  ],
+  "sampleRules": [
+    {
+      "id": "sample-1",
+      "label": "Contract ID null or empty",
+      "ruleText": "Produce Error If <Contract Identifier> is null or empty",
+      "droolsWhen": "identifier == null || identifier == \"\""
+    },
+    {
+      "id": "sample-2",
+      "label": "Contract ID length > 40",
+      "ruleText": "Produce Error If <Contract Identifier> is not null or empty and length > 40",
+      "droolsWhen": "identifier != null && identifier.length() > 40"
+    },
+    {
+      "id": "sample-3",
+      "label": "Balance equals zero",
+      "ruleText": "Produce Error If <Balance> equals 0",
+      "droolsWhen": "balance == 0"
+    },
+    {
+      "id": "sample-4",
+      "label": "Multiple conditions (and)",
+      "ruleText": "Produce Error If <Contract Identifier> is empty and <Account Number> is null",
+      "droolsWhen": "(identifier == \"\" && accountNumber == null)"
+    }
+  ],
+  "ruleStyleReference": [
+    {
+      "title": "Null/Empty",
+      "examples": [
+        "Produce Error If <Field> is null",
+        "Produce Error If <Field> is empty",
+        "Produce Error If <Field> is null or empty"
+      ]
+    },
+    {
+      "title": "Length",
+      "examples": [
+        "Produce Error If <Field> length > 40",
+        "Produce Error If <Field> is not empty and length < 5"
+      ]
+    },
+    {
+      "title": "Equality",
+      "examples": [
+        "Produce Error If <Field> equals \"value\"",
+        "Produce Warning If <Field> not equals \"expected\""
+      ]
+    },
+    {
+      "title": "Relational",
+      "examples": [
+        "Produce Error If <Amount> > 10000",
+        "Produce Error If <Balance> < 0",
+        "Produce Warning If <Date> >= \"2024-01-01\""
+      ]
+    },
+    {
+      "title": "Combined (and / or)",
+      "examples": [
+        "Produce Error If <A> is null and <B> is empty",
+        "Produce Error If <A> equals 0 or <B> < 100"
+      ]
+    },
+    {
+      "title": "In / Not in (list)",
+      "examples": [
+        "Produce Error If <Status> in (ACTIVE, PENDING)",
+        "Produce Warning If <Code> not in (100, 200, 300)"
+      ]
+    }
+  ]
+}
