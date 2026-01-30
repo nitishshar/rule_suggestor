@@ -77,7 +77,36 @@ export class RuleTokenizerService {
         continue;
       }
 
-      // Try data element: <...>
+      // Try data element: match by displayValue or completeValue (without <>)
+      // Sort by length descending to match longer names first
+      const sortedElements = [...config.dataElements].sort((a, b) => b.displayValue.length - a.displayValue.length);
+      let dataElementMatched = false;
+      
+      for (const dataEl of sortedElements) {
+        if (rest.toLowerCase().startsWith(dataEl.displayValue.toLowerCase())) {
+          const t: DataElementToken = {
+            type: 'dataElement',
+            guid: dataEl.guid,
+            displayValue: dataEl.displayValue,
+            completeValue: dataEl.completeValue,
+            fullValue: dataEl.displayValue,
+            displayText: dataEl.displayValue,
+            startIndex: i,
+            endIndex: i + dataEl.displayValue.length,
+          };
+          tokens.push(t);
+          displayText += t.displayText;
+          i += dataEl.displayValue.length;
+          dataElementMatched = true;
+          break;
+        }
+      }
+      
+      if (dataElementMatched) {
+        continue;
+      }
+
+      // Legacy support: Try data element with <...> brackets
       const angleMatch = /^<([^>]*)>/.exec(rest);
       if (angleMatch) {
         const inside = angleMatch[1].trim();

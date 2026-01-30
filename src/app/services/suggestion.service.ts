@@ -52,7 +52,7 @@ export class SuggestionService {
       kind: 'dataElement',
       id: e.guid,
       displayText: e.displayValue,
-      insertText: `<${e.displayValue}>`,
+      insertText: e.displayValue,
       completeValue: e.completeValue,
       guid: e.guid,
       category: e.category,
@@ -137,16 +137,55 @@ export class SuggestionService {
   ): { items: SuggestionItem[]; prefix: string } {
     const trimmed = textBeforeCursor.trimEnd();
     const lastWord = this.getLastWord(trimmed);
+    
+    // Check if text contains data elements (either with <> or matching known data element names)
+    const hasLegacyBrackets = trimmed.includes('<') || trimmed.includes('>');
+    const containsDataElement = hasLegacyBrackets || this.containsKnownDataElement(trimmed, config.dataElements);
+    
+    // Check if we're right after a data element (for operator suggestions)
+    const endsWithDataElement = this.endsWithDataElement(trimmed, config.dataElements);
 
-    // After "Produce Error If " or similar -> suggest data elements (or phrase if empty)
-    if (/^(Produce Error If|Produce Warning If|Reject If|Require That)\s*$/i.test(trimmed)) {
-      return { items: this.getDataElementSuggestions(config, ''), prefix: '' };
+    // Check if text starts with a known phrase (but ONLY if no data elements yet)
+    if (!containsDataElement) {
+      const startsWithPhrase = config.phraseSuggestions.some(p => 
+        trimmed.toLowerCase().startsWith(p.insertText.toLowerCase()) ||
+        trimmed.toLowerCase().startsWith(p.displayText.toLowerCase())
+      );
+
+      // If starts with phrase and has more text after it -> suggest data elements
+      if (startsWithPhrase) {
+        const phraseMatch = config.phraseSuggestions.find(p => 
+          trimmed.toLowerCase().startsWith(p.insertText.toLowerCase()) ||
+          trimmed.toLowerCase().startsWith(p.displayText.toLowerCase())
+        );
+        if (phraseMatch) {
+          const phraseLength = Math.max(phraseMatch.insertText.length, phraseMatch.displayText.length);
+          const afterPhrase = trimmed.substring(phraseLength).trim();
+          // If there's text after the phrase, use it as prefix for data element filtering
+          if (afterPhrase) {
+            return { items: this.getDataElementSuggestions(config, afterPhrase), prefix: afterPhrase };
+          }
+          // Just the phrase with optional space -> suggest data elements
+          return { items: this.getDataElementSuggestions(config, ''), prefix: '' };
+        }
+      }
     }
 
-    // Typing after space at start -> phrase suggestions
-    if (/^\s*$/.test(trimmed) || (trimmed.length < 20 && !trimmed.includes('<') && !trimmed.includes('>'))) {
+    // At the very beginning (empty) -> phrase suggestions
+    if (/^\s*$/.test(trimmed)) {
       const phrases = this.getPhraseSuggestions(config, lastWord);
       return { items: phrases, prefix: lastWord };
+    }
+
+    // Typing a phrase prefix (short text, no data elements yet)
+    if (!containsDataElement && trimmed.length < 20) {
+      const phrases = this.getPhraseSuggestions(config, lastWord);
+      return { items: phrases, prefix: lastWord };
+    }
+
+    // Right after a data element (with space) -> suggest operators
+    if (endsWithDataElement) {
+      return { items: this.getOperatorSuggestions(config, ''), prefix: '' };
     }
 
     // Inside "in (" or "not in (" (comma-separated list) -> suggest ) and ,
@@ -170,7 +209,7 @@ export class SuggestionService {
       }
     }
 
-    // Inside or just after > -> operator or connector (show all operators when right after data element)
+    // Legacy: Inside or just after > -> operator or connector (show all operators when right after data element)
     if (trimmed.endsWith('>') || />\s*$/.test(trimmed)) {
       const after = textAfterCursor.trim();
       if (after.startsWith('and') || after.startsWith('or') || after.startsWith('(')) {
@@ -185,7 +224,7 @@ export class SuggestionService {
     }
 
     // Typing prefix of "and" or "or" after a condition (e.g. "equals 890 an") -> suggest and, or, (
-    if (trimmed.includes('>') && /^(a|an|and|o|or)$/i.test(lastWord)) {
+    if (containsDataElement && /^(a|an|and|o|or)$/i.test(lastWord)) {
       const beforeLastWord = trimmed.slice(0, trimmed.length - lastWord.length).trimEnd();
       if (beforeLastWord.length > 0) {
         const endsWithNumber = /\d+\s*$/.test(beforeLastWord) || /\s\d+\s*$/.test(beforeLastWord);
@@ -197,16 +236,17 @@ export class SuggestionService {
             beforeLastWord.endsWith(op.displayLabel) ||
             beforeLastWord.endsWith(' ' + op.displayLabel)
         );
-        const afterLastGt = beforeLastWord.slice(beforeLastWord.lastIndexOf('>') + 1).trim();
-        const hasOperatorAndValue = afterLastGt.split(/\s+/).length >= 2;
+        // Check if we have operator and value after data element
+        const words = beforeLastWord.trim().split(/\s+/);
+        const hasOperatorAndValue = words.length >= 4; // phrase + data element + operator + value
         if (endsWithNumber || endsWithOperator || hasOperatorAndValue) {
           return { items: this.getConditionCompletorSuggestions(config), prefix: lastWord };
         }
       }
     }
 
-    // After a condition (e.g. "...> is null" or "...> equals 0") -> suggest (, and, or
-    if (trimmed.includes('>')) {
+    // After a condition (e.g. "...> is null" or "... is null") -> suggest (, and, or
+    if (containsDataElement) {
       const sortedOps = [...config.operators].sort(
         (a, b) => b.displayLabel.length - a.displayLabel.length
       );
@@ -234,9 +274,10 @@ export class SuggestionService {
           return { items: this.getConditionCompletorSuggestions(config), prefix: '' };
         }
         // After "operator word " (e.g. "... equals something ") -> suggest (, and, or
-        if (beforeSpace.includes('>') && /\s[a-zA-Z0-9"]+\s*$/.test(beforeSpace)) {
-          const afterLastGt = beforeSpace.slice(beforeSpace.lastIndexOf('>') + 1).trim();
-          if (afterLastGt.split(/\s+/).length >= 2) {
+        if (this.containsKnownDataElement(beforeSpace, config.dataElements) && /\s[a-zA-Z0-9"]+\s*$/.test(beforeSpace)) {
+          // Check if we have at least operator + value after the data element
+          const words = beforeSpace.trim().split(/\s+/);
+          if (words.length >= 3) { // phrase + dataElement + operator + value
             return { items: this.getConditionCompletorSuggestions(config), prefix: '' };
           }
         }
@@ -256,6 +297,26 @@ export class SuggestionService {
       if (phrases.length) return { items: phrases, prefix: lastWord };
     }
     return { items: this.getDataElementSuggestions(config, lastWord), prefix: lastWord };
+  }
+
+  private containsKnownDataElement(text: string, dataElements: DataElement[]): boolean {
+    const lowerText = text.toLowerCase();
+    return dataElements.some(de => lowerText.includes(de.displayValue.toLowerCase()));
+  }
+
+  private endsWithDataElement(text: string, dataElements: DataElement[]): boolean {
+    const trimmed = text.trimEnd();
+    // Sort by length descending to match longest names first
+    const sorted = [...dataElements].sort((a, b) => b.displayValue.length - a.displayValue.length);
+    
+    for (const de of sorted) {
+      // Check if text ends with the data element name followed by a space
+      const pattern = new RegExp(`\\b${de.displayValue}\\s*$`, 'i');
+      if (pattern.test(trimmed)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private getLastWord(text: string): string {

@@ -110,11 +110,9 @@ export class DroolsGeneratorService {
   }
 
   private toDroolsFieldPath(completeValue: string): string {
-    // e.g. "Deposits.Deposits Account.Balance" -> "balance"
-    // Split by dots and spaces to get the final field name
-    const allSegments = completeValue.split(/[\s.]+/);
-    const last = allSegments[allSegments.length - 1];
-    return last.replace(/-/g, '_').toLowerCase() || completeValue.toLowerCase();
+    // Use the full path from the data element token
+    // e.g. "Deposits.Deposits Contract.Account Number" as-is
+    return completeValue;
   }
 
   private quoteIfString(val: string): string {

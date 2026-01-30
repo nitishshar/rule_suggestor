@@ -1,7 +1,6 @@
 import {
   Component,
   OnInit,
-  OnDestroy,
   ViewChild,
   ElementRef,
   AfterViewInit,
@@ -26,7 +25,7 @@ import { RuleEditorFormatterComponent } from '../rule-editor-formatter/rule-edit
   templateUrl: './rule-editor.component.html',
   styleUrls: ['./rule-editor.component.scss'],
 })
-export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
+export class RuleEditorComponent implements OnInit, AfterViewInit {
   private configService = inject(RuleConfigService);
   private suggestionService = inject(SuggestionService);
   private tokenizer = inject(RuleTokenizerService);
@@ -68,24 +67,21 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     this.configService.getConfig().subscribe((c) => this.config.set(c));
   }
 
-  ngOnDestroy(): void {
-    const el = this.inputEl?.nativeElement;
-    if (el) {
-      el.removeEventListener('keydown', this.keydownRef, true);
-    }
-  }
-
-  private keydownRef = (e: KeyboardEvent) => this.handleKeyDown(e);
-
   ngAfterViewInit(): void {
-    const el = this.inputEl?.nativeElement;
-    if (el) {
-      // Use capture phase to intercept Enter before textarea handles it
-      el.addEventListener('keydown', this.keydownRef, true);
-    }
+    // No longer needed - using template-based (keydown) handler
   }
 
   onInput(e: Event): void {
+    this.syncFromInput(e.target as HTMLTextAreaElement);
+  }
+
+  onKeyUp(e: Event): void {
+    const ke = e as KeyboardEvent;
+    // Skip cursor updates for navigation keys
+    const navigationKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Tab', 'Escape'];
+    if (navigationKeys.includes(ke.key)) {
+      return;
+    }
     this.syncFromInput(e.target as HTMLTextAreaElement);
   }
 
@@ -116,7 +112,7 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     }, 200);
   }
 
-  onEnter(e: Event): void {
+  onEnterKey(e: Event): void {
     const suggestions = this.suggestions();
     if (this.showSuggestions() && suggestions.length > 0) {
       e.preventDefault();
@@ -127,7 +123,7 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  onTab(e: Event): void {
+  onTabKey(e: Event): void {
     const suggestions = this.suggestions();
     if (this.showSuggestions() && suggestions.length > 0) {
       e.preventDefault();
@@ -135,6 +131,33 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       if (idx >= 0 && idx < suggestions.length) {
         this.applySuggestion(suggestions[idx]);
       }
+    }
+  }
+
+  onArrowDown(e: Event): void {
+    const suggestions = this.suggestions();
+    if (this.showSuggestions() && suggestions.length > 0) {
+      e.preventDefault();
+      const idx = this.selectedIndex();
+      this.selectedIndex.set((idx + 1) % suggestions.length);
+      this.scrollSelectedIntoView();
+    }
+  }
+
+  onArrowUp(e: Event): void {
+    const suggestions = this.suggestions();
+    if (this.showSuggestions() && suggestions.length > 0) {
+      e.preventDefault();
+      const idx = this.selectedIndex();
+      this.selectedIndex.set(idx === 0 ? suggestions.length - 1 : idx - 1);
+      this.scrollSelectedIntoView();
+    }
+  }
+
+  onEscapeKey(e: Event): void {
+    if (this.showSuggestions()) {
+      e.preventDefault();
+      this.showSuggestions.set(false);
     }
   }
 
@@ -150,43 +173,6 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     this.showSuggestions.set(items.length > 0);
   }
 
-  private handleKeyDown(e: KeyboardEvent): void {
-    const suggestions = this.suggestions();
-    const hasSuggestions = this.showSuggestions() && suggestions.length > 0;
-    
-    // Intercept Enter and Tab when suggestions are visible
-    if ((e.key === 'Enter' || e.key === 'Tab') && hasSuggestions) {
-      e.preventDefault();
-      e.stopPropagation();
-      const idx = this.selectedIndex();
-      if (idx >= 0 && idx < suggestions.length) {
-        this.applySuggestion(suggestions[idx]);
-      }
-      return;
-    }
-
-    // Other keys only when suggestions are visible
-    if (!hasSuggestions) return;
-    const idx = this.selectedIndex();
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      this.selectedIndex.set((idx + 1) % suggestions.length);
-      this.scrollSelectedIntoView();
-      return;
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      this.selectedIndex.set(idx === 0 ? suggestions.length - 1 : idx - 1);
-      this.scrollSelectedIntoView();
-      return;
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      this.showSuggestions.set(false);
-    }
-  }
-
   private scrollSelectedIntoView(): void {
     setTimeout(() => {
       const list = this.suggestionList?.nativeElement;
@@ -199,7 +185,7 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     this.applySuggestion(item);
   }
 
-  private applySuggestion(item: SuggestionItem): void {
+  private   applySuggestion(item: SuggestionItem): void {
     const ta = this.inputEl?.nativeElement;
     if (!ta) return;
     const before = this.rawText().slice(0, this.cursorPosition());
@@ -207,6 +193,12 @@ export class RuleEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     const prefix = this.suggestionPrefix();
 
     let insert = item.insertText;
+    
+    // Add space after data element or phrase if not already present
+    if ((item.kind === 'dataElement' || item.kind === 'phrase') && !insert.endsWith(' ') && !after.startsWith(' ')) {
+      insert += ' ';
+    }
+
     if (prefix && (item.kind === 'dataElement' || item.kind === 'phrase' || item.kind === 'operator' || item.kind === 'connector')) {
       const beforeWithoutPrefix = before.slice(0, before.length - prefix.length);
       const newBefore = beforeWithoutPrefix + insert;
