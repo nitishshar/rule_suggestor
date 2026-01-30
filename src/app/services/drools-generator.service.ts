@@ -2,14 +2,21 @@ import { Injectable } from '@angular/core';
 import { RuleToken, DataElementToken, OperatorToken, ValueToken, ConnectorToken, TextToken } from '../models/token.model';
 import { RuleSuggestorConfig } from '../models/rule-config.model';
 
+interface DroolsCondition {
+  entity: string;
+  attribute: string;
+  condition: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DroolsGeneratorService {
   /**
    * Generates the "when" part of a Drools rule from tokenized rule.
-   * Uses completeValue (path) for field reference and maps operators to Drools syntax.
+   * Format: <Entity>:(attribute condition1 , attribute condition2)
+   * Example: <Deposits.Deposits Contract>:(Contract Identifier == null , Balance > 100)
    */
   generateWhenClause(tokens: RuleToken[], config: RuleSuggestorConfig): string {
-    const parts: string[] = [];
+    const conditions: DroolsCondition[] = [];
     let i = 0;
 
     while (i < tokens.length) {
@@ -17,6 +24,7 @@ export class DroolsGeneratorService {
 
       if (t.type === 'dataElement') {
         const dataToken = t as DataElementToken;
+        const { entity, attribute } = this.parseCompleteValue(dataToken.completeValue);
         i++; // consume data element
         
         // Skip spaces/text tokens
@@ -26,13 +34,12 @@ export class DroolsGeneratorService {
 
         const opToken = i < tokens.length && tokens[i].type === 'operator' ? (tokens[i] as OperatorToken) : undefined;
         if (!opToken) {
-          parts.push(`${this.toDroolsFieldPath(dataToken.completeValue)} != null`);
+          conditions.push({ entity, attribute, condition: `${attribute} != null` });
           continue;
         }
 
         const opDef = config.operators.find((o) => o.id === opToken.operatorId);
         const droolsOp = opDef?.droolsOperator ?? opToken.symbol;
-        const fieldPath = this.toDroolsFieldPath(dataToken.completeValue);
         i++; // consume operator
 
         // Skip spaces
@@ -42,22 +49,22 @@ export class DroolsGeneratorService {
 
         // Operators that don't need a value
         if (droolsOp === '== null') {
-          parts.push(`${fieldPath} == null`);
+          conditions.push({ entity, attribute, condition: `${attribute} == null` });
           continue;
         } else if (droolsOp === '!= null') {
-          parts.push(`${fieldPath} != null`);
+          conditions.push({ entity, attribute, condition: `${attribute} != null` });
           continue;
         } else if (droolsOp === 'empty') {
-          parts.push(`${fieldPath} == ""`);
+          conditions.push({ entity, attribute, condition: `${attribute} == ""` });
           continue;
         } else if (droolsOp === 'not empty') {
-          parts.push(`${fieldPath} != ""`);
+          conditions.push({ entity, attribute, condition: `${attribute} != ""` });
           continue;
         } else if (droolsOp === 'nullOrEmpty') {
-          parts.push(`(${fieldPath} == null || ${fieldPath} == "")`);
+          conditions.push({ entity, attribute, condition: `(${attribute} == null || ${attribute} == "")` });
           continue;
         } else if (droolsOp === 'notNullOrEmpty') {
-          parts.push(`(${fieldPath} != null && ${fieldPath} != "")`);
+          conditions.push({ entity, attribute, condition: `(${attribute} != null && ${attribute} != "")` });
           continue;
         }
 
@@ -78,41 +85,68 @@ export class DroolsGeneratorService {
         }
 
         if (!valueStr) {
-          // No value found, just output operator (shouldn't happen for equals, >, <, etc.)
-          parts.push(`${fieldPath} ${droolsOp}`);
+          conditions.push({ entity, attribute, condition: `${attribute} ${droolsOp}` });
           continue;
         }
 
         const quotedValue = this.quoteIfString(valueStr);
         if (droolsOp === 'length >') {
-          parts.push(`${fieldPath} != null && ${fieldPath}.length() > ${quotedValue}`);
+          conditions.push({ entity, attribute, condition: `${attribute} != null && ${attribute}.length() > ${quotedValue}` });
         } else if (droolsOp === 'length <') {
-          parts.push(`${fieldPath} != null && ${fieldPath}.length() < ${quotedValue}`);
+          conditions.push({ entity, attribute, condition: `${attribute} != null && ${attribute}.length() < ${quotedValue}` });
         } else {
-          parts.push(`${fieldPath} ${droolsOp} ${quotedValue}`);
+          conditions.push({ entity, attribute, condition: `${attribute} ${droolsOp} ${quotedValue}` });
         }
         continue;
       }
 
-      if (t.type === 'connector') {
-        const conn = t as ConnectorToken;
-        const connDef = config.logicalConnectors.find((c) => c.id === conn.connectorId);
-        parts.push(connDef?.droolsText ?? conn.displayText);
-        i += 1;
-        continue;
-      }
-
+      // Skip connectors - we'll group by entity instead
       i += 1;
     }
 
-    if (parts.length === 0) return '';
-    return parts.join(' ');
+    // Group conditions by entity
+    return this.formatDroolsOutput(conditions);
   }
 
-  private toDroolsFieldPath(completeValue: string): string {
-    // Use the full path from the data element token
-    // e.g. "Deposits.Deposits Contract.Account Number" as-is
-    return completeValue;
+  private parseCompleteValue(completeValue: string): { entity: string; attribute: string } {
+    // Split by dots: "Deposits.Deposits Contract.Contract Identifier"
+    // First two parts = entity, last part = attribute
+    const parts = completeValue.split('.');
+    if (parts.length >= 3) {
+      // Has 3+ parts: first 2 are entity, rest is attribute
+      const entity = parts.slice(0, 2).join('.');
+      const attribute = parts.slice(2).join('.');
+      return { entity, attribute };
+    } else if (parts.length === 2) {
+      // Has 2 parts: first is entity, second is attribute
+      return { entity: parts[0], attribute: parts[1] };
+    }
+    // Fallback if only 1 part
+    return { entity: completeValue, attribute: completeValue };
+  }
+
+  private formatDroolsOutput(conditions: DroolsCondition[]): string {
+    if (conditions.length === 0) return '';
+
+    // Group by entity
+    const groupedByEntity = new Map<string, string[]>();
+    
+    for (const cond of conditions) {
+      if (!groupedByEntity.has(cond.entity)) {
+        groupedByEntity.set(cond.entity, []);
+      }
+      groupedByEntity.get(cond.entity)!.push(cond.condition);
+    }
+
+    // Format each entity group
+    const entityClauses: string[] = [];
+    for (const [entity, conditionList] of groupedByEntity.entries()) {
+      const conditionsStr = conditionList.join(' , ');
+      entityClauses.push(`<${entity}>:(${conditionsStr})`);
+    }
+
+    // Join entity groups with comma separator
+    return entityClauses.join(' , ');
   }
 
   private quoteIfString(val: string): string {

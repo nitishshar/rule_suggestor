@@ -126,32 +126,32 @@
     {
       "id": "sample-1",
       "label": "Contract ID null or empty",
-      "ruleText": "Produce Error If <Contract Identifier> is null or empty",
-      "droolsWhen": "identifier == null || identifier == \"\""
+      "ruleText": "Produce Error If Contract Identifier is null or empty",
+      "droolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier == null || Contract Identifier == \"\")"
     },
     {
       "id": "sample-2",
       "label": "Contract ID length > 40",
-      "ruleText": "Produce Error If <Contract Identifier> is not null or empty and length > 40",
-      "droolsWhen": "identifier != null && identifier.length() > 40"
+      "ruleText": "Produce Error If Contract Identifier is not null or empty and length greater than 40",
+      "droolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier != null && Contract Identifier.length() > 40)"
     },
     {
       "id": "sample-3",
       "label": "Balance equals zero",
-      "ruleText": "Produce Error If <Balance> equals 0",
-      "droolsWhen": "balance == 0"
+      "ruleText": "Produce Error If Balance equals 0",
+      "droolsWhen": "<Deposits.Deposits Account>:(Balance == 0)"
     },
     {
       "id": "sample-4",
-      "label": "Multiple conditions (and)",
-      "ruleText": "Produce Error If <Contract Identifier> is empty and <Account Number> is null",
-      "droolsWhen": "(identifier == \"\" && number == null)"
+      "label": "Multiple conditions - different entities",
+      "ruleText": "Produce Error If Contract Identifier is empty and Account Number is null",
+      "droolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier == \"\") , <Deposits.Deposits Account>:(Account Number == null)"
     },
     {
       "id": "sample-5",
-      "label": "With free-text values",
-      "ruleText": "Produce Error If <Account Number> equals 100 and <Balance> greater than 50",
-      "droolsWhen": "number == 100 && balance > 50"
+      "label": "Multiple conditions - same entity",
+      "ruleText": "Produce Error If Account Number equals 100 and Balance greater than 50",
+      "droolsWhen": "<Deposits.Deposits Account>:(Account Number == 100 , Balance > 50)"
     }
   ],
   "ruleStyleReference": [
