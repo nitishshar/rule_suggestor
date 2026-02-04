@@ -15,7 +15,7 @@ import { RuleTokenizerService } from '../../services/rule-tokenizer.service';
 import { DroolsGeneratorService } from '../../services/drools-generator.service';
 import { PatternMatchService } from '../../services/pattern-match.service';
 import { RuleSuggestorConfig } from '../../models/rule-config.model';
-import { RuleToken, DataElementToken, TokenizedRule } from '../../models/token.model';
+import { RuleToken, DataElementToken, OperatorToken, ConnectorToken, TokenizedRule } from '../../models/token.model';
 import { RuleEditorFormatterComponent } from '../rule-editor-formatter/rule-editor-formatter.component';
 
 @Component({
@@ -61,6 +61,18 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   bracketWarning = computed(() => {
     const raw = this.rawText();
     const result = this.validateBrackets(raw);
+    return result.valid ? null : result.message;
+  });
+
+  completenessWarning = computed(() => {
+    const tok = this.tokenized();
+    const cfg = this.config();
+    if (!tok || !cfg) return null;
+    
+    // Only show completeness warnings if there's some content
+    if (this.rawText().trim().length === 0) return null;
+    
+    const result = this.validateRuleCompleteness(tok.tokens, cfg);
     return result.valid ? null : result.message;
   });
 
@@ -273,21 +285,132 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
     const tok = this.tokenized();
     if (!cfg || !tok) return;
 
-    const bracketResult = this.validateBrackets(this.rawText());
-    if (!bracketResult.valid && bracketResult.message) {
-      this.deviationWarning.set(bracketResult.message);
+    // Check if there are any real-time validation warnings
+    if (this.completenessWarning()) {
+      // Don't save if rule is incomplete
+      return;
+    }
+
+    if (this.bracketWarning()) {
+      // Don't save if brackets are unbalanced
+      return;
+    }
+
+    // Check pattern matching (only this creates the dismissible deviation warning)
+    const result = this.patternMatch.checkPattern(tok.tokens, cfg);
+    if (!result.matched && result.deviationReason) {
+      this.deviationWarning.set(result.deviationReason);
     } else {
-      const result = this.patternMatch.checkPattern(tok.tokens, cfg);
-      if (!result.matched && result.deviationReason) {
-        this.deviationWarning.set(result.deviationReason);
-      } else {
-        this.deviationWarning.set(null);
-      }
+      this.deviationWarning.set(null);
     }
 
     const whenClause = this.droolsGenerator.generateWhenClause(tok.tokens, cfg);
     this.generatedDrools.set(whenClause);
     this.savedRuleDisplay.set(tok);
+  }
+
+  /** Validates that the rule is complete and ready to save. */
+  validateRuleCompleteness(tokens: RuleToken[], config: RuleSuggestorConfig): { valid: boolean; message?: string } {
+    if (tokens.length === 0) {
+      return { valid: false, message: 'Rule is empty. Please enter a rule expression.' };
+    }
+
+    // Check for phrase at the beginning
+    const hasPhrase = tokens.some(t => t.type === 'phrase');
+    if (!hasPhrase) {
+      return { valid: false, message: 'Rule must start with a phrase (e.g., "Produce Error If").' };
+    }
+
+    // Check for at least one data element
+    const dataElements = tokens.filter(t => t.type === 'dataElement');
+    if (dataElements.length === 0) {
+      // Only show this warning if user has typed more than just the phrase
+      const nonPhraseTokens = tokens.filter(t => t.type !== 'phrase' && (t.type !== 'text' || t.displayText.trim() !== ''));
+      if (nonPhraseTokens.length > 0) {
+        return { valid: false, message: 'Rule must contain at least one data element.' };
+      }
+      // If only phrase, don't show warning yet
+      return { valid: true };
+    }
+
+    // Check if rule ends with a connector (incomplete condition)
+    const lastNonSpaceToken = this.getLastNonSpaceToken(tokens);
+    if (lastNonSpaceToken) {
+      if (lastNonSpaceToken.type === 'connector') {
+        const connToken = lastNonSpaceToken as ConnectorToken;
+        const connDef = config.logicalConnectors.find(c => c.id === connToken.connectorId);
+        const connText = connDef?.displayText || 'connector';
+        return { valid: false, message: `Rule ends with "${connText}" but has no following condition.` };
+      }
+      
+      // Check if rule ends with an operator that needs a value
+      if (lastNonSpaceToken.type === 'operator') {
+        const opToken = lastNonSpaceToken as OperatorToken;
+        const opDef = config.operators.find(o => o.id === opToken.operatorId);
+        const droolsOp = opDef?.droolsOperator;
+        const noValueOps = ['== null', '!= null', 'empty', 'not empty', 'nullOrEmpty', 'notNullOrEmpty'];
+        
+        if (droolsOp && !noValueOps.includes(droolsOp)) {
+          return { valid: false, message: `Operator "${opToken.displayText}" is missing a value.` };
+        }
+      }
+    }
+
+    // Check each data element has an operator
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].type === 'dataElement') {
+        const dataEl = tokens[i] as DataElementToken;
+        
+        // Look for operator after data element (skip text/spaces)
+        let j = i + 1;
+        while (j < tokens.length && tokens[j].type === 'text' && tokens[j].displayText.trim() === '') {
+          j++;
+        }
+        
+        if (j >= tokens.length || tokens[j].type !== 'operator') {
+          return { valid: false, message: `Data element "${dataEl.displayValue}" is missing an operator.` };
+        }
+
+        // Check if operator needs a value
+        const opToken = tokens[j] as OperatorToken;
+        const opDef = config.operators.find(o => o.id === opToken.operatorId);
+        const droolsOp = opDef?.droolsOperator;
+        
+        // Operators that don't need values
+        const noValueOps = ['== null', '!= null', 'empty', 'not empty', 'nullOrEmpty', 'notNullOrEmpty'];
+        
+        if (droolsOp && !noValueOps.includes(droolsOp)) {
+          // This operator needs a value - check if there's text/value after it
+          let k = j + 1;
+          while (k < tokens.length && tokens[k].type === 'text' && tokens[k].displayText.trim() === '') {
+            k++;
+          }
+          
+          // Check if next token is value or text (not connector or data element)
+          if (k >= tokens.length || (tokens[k].type !== 'text' && tokens[k].type !== 'value')) {
+            return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" is missing a value.` };
+          }
+          
+          // Make sure the value is not empty
+          const valueText = tokens[k].displayText.trim();
+          if (!valueText) {
+            return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" has an empty value.` };
+          }
+        }
+      }
+    }
+
+    return { valid: true };
+  }
+
+  /** Get the last non-whitespace token */
+  private getLastNonSpaceToken(tokens: RuleToken[]): RuleToken | null {
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      if (tokens[i].type !== 'text' || tokens[i].displayText.trim() !== '') {
+        return tokens[i];
+      }
+    }
+    return null;
   }
 
   /** Validates that every ( has a matching ). */

@@ -85,6 +85,10 @@
     </div>
   </div>
 
+  <div class="warning-strip" *ngIf="completenessWarning()">
+    <span class="warning-icon">⚠</span>
+    <span>{{ completenessWarning() }}</span>
+  </div>
   <div class="warning-strip" *ngIf="bracketWarning()">
     <span class="warning-icon">⚠</span>
     <span>{{ bracketWarning() }}</span>
