@@ -98,6 +98,16 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
     this.syncFromInput(e.target as HTMLTextAreaElement);
   }
 
+  onPaste(e: Event): void {
+    // Let the paste complete, then tokenize
+    setTimeout(() => {
+      const ta = e.target as HTMLTextAreaElement;
+      this.syncFromInput(ta);
+      // Hide suggestions after paste to show the tokenized result
+      this.showSuggestions.set(false);
+    }, 0);
+  }
+
   onKeyUp(e: Event): void {
     const ke = e as KeyboardEvent;
     // Skip cursor updates for navigation keys

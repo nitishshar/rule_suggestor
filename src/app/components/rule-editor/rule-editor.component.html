@@ -26,6 +26,7 @@
           placeholder="Start typing... e.g. Produce Error If"
           [value]="rawText()"
           (input)="onInput($event)"
+          (paste)="onPaste($event)"
           (keyup)="onKeyUp($event)"
           (click)="onCursorChange($event)"
           (keydown.enter)="onEnterKey($event)"
