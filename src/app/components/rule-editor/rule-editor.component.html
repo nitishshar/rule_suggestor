@@ -18,12 +18,81 @@
 
   <div class="editor-row">
     <div class="input-section">
-      <label class="label">Rule text</label>
+      <!-- Modern Toolbar -->
+      <div class="editor-toolbar">
+        <div class="toolbar-left">
+          <button 
+            type="button" 
+            class="toolbar-btn"
+            [class.active]="isAdvancedMode()"
+            (click)="toggleAdvancedMode()"
+            title="Toggle Multi-Criteria Mode"
+          >
+            <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+            <span class="toolbar-label">{{ isAdvancedMode() ? 'Multi-Criteria' : 'Simple Mode' }}</span>
+          </button>
+          <button 
+            *ngIf="isAdvancedMode()" 
+            type="button" 
+            class="toolbar-btn help-btn-toolbar" 
+            (click)="showCriteriaHelp.set(!showCriteriaHelp())"
+            title="Show example"
+          >
+            <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span class="toolbar-label">Help</span>
+          </button>
+        </div>
+        <div class="toolbar-right">
+          <button 
+            type="button" 
+            class="toolbar-btn save-btn"
+            (click)="saveRule()"
+            [disabled]="!rawText().trim()"
+            title="Save rule & generate Drools"
+          >
+            <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span class="toolbar-label">Save & Generate</span>
+          </button>
+        </div>
+      </div>
+
+      <label class="label" *ngIf="false">
+        {{ isAdvancedMode() ? 'Complete Rule (with all criteria)' : 'Rule text' }}
+      </label>
+      
+      <div class="criteria-help" *ngIf="isAdvancedMode() && showCriteriaHelp()">
+        <strong>How to write complex rules:</strong>
+        <ol>
+          <li>Start with your main rule: <code>Produce Error If Contract Identifier in (ABC,DEF)</code></li>
+          <li>Leave a blank line, then add section header: <code>Applicability Criteria:</code></li>
+          <li>Type numbered conditions: <code>1. Balance is not null</code></li>
+          <li>Press <kbd>Enter</kbd> to auto-number next line: <code>2. </code></li>
+          <li>Add more sections: <code>TRIMS Specific Criteria:</code></li>
+          <li>Continue with numbered conditions</li>
+        </ol>
+        <p class="example-note"><strong>Important:</strong> Section headers must end with "Criteria:" or "criteria:" and be on their own line!</p>
+        <p class="example-note">Autocomplete works throughout - just start typing data element names!</p>
+        <button type="button" class="insert-template-btn" (click)="insertCriteriaTemplate()">
+          Insert Template
+        </button>
+      </div>
+      
       <div class="input-wrap">
         <textarea
           #inputEl
           class="rule-input"
-          placeholder="Start typing... e.g. Produce Error If"
+          [class.expanded]="isAdvancedMode()"
+          [placeholder]="isAdvancedMode() ? 'Example:\nProduce Error If Contract Identifier in (ABC,DEF)\n\nApplicability Criteria:\n1. Balance is not null\n2. Account Number is not null\n\nTRIMS Specific Criteria:\n1. Transaction Amount greater than 100' : 'Start typing... e.g. Produce Error If'"
           [value]="rawText()"
           (input)="onInput($event)"
           (paste)="onPaste($event)"
@@ -36,7 +105,7 @@
           (keydown.escape)="onEscapeKey($event)"
           (focus)="onFocus()"
           (blur)="onBlur()"
-          rows="3"
+          [rows]="isAdvancedMode() ? 12 : 3"
         ></textarea>
         <!-- Formatted preview: display text only, data elements styled -->
         <div class="formatted-preview" *ngIf="rawText()">
@@ -100,10 +169,6 @@
     <button type="button" class="warning-dismiss" (click)="clearWarning()">Dismiss</button>
   </div>
 
-  <div class="actions">
-    <button type="button" class="btn-primary" (click)="saveRule()">Save rule & generate Drools</button>
-  </div>
-
   <div class="drools-section" *ngIf="generatedDrools()">
     <label class="label">Generated Drools (when part)</label>
     <textarea
@@ -116,7 +181,19 @@
 
   <div class="saved-token-summary" *ngIf="savedRuleDisplay()">
     <label class="label">Saved rule (tokenized)</label>
-    <app-rule-editor-formatter [tokens]="savedRuleDisplay()!.tokens" />
+    <div class="saved-rule-display" [class.multi-criteria]="isAdvancedMode()">
+      <div *ngIf="!isAdvancedMode()">
+        <app-rule-editor-formatter [tokens]="savedRuleDisplay()!.tokens" />
+      </div>
+      <div *ngIf="isAdvancedMode()" class="formatted-multi-criteria">
+        <div *ngFor="let section of formattedSavedRuleSections()" class="rule-section">
+          <div *ngIf="section.isHeader" class="section-header">{{ section.text }}</div>
+          <div *ngIf="!section.isHeader" class="section-content">
+            <app-rule-editor-formatter [tokens]="section.tokens || []" />
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

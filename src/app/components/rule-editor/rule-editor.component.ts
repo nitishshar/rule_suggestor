@@ -14,9 +14,12 @@ import { SuggestionService, SuggestionItem } from '../../services/suggestion.ser
 import { RuleTokenizerService } from '../../services/rule-tokenizer.service';
 import { DroolsGeneratorService } from '../../services/drools-generator.service';
 import { PatternMatchService } from '../../services/pattern-match.service';
+import { CriteriaParserService } from '../../services/criteria-parser.service';
+import { MultiCriteriaParserService } from '../../services/multi-criteria-parser.service';
 import { RuleSuggestorConfig } from '../../models/rule-config.model';
 import { RuleToken, DataElementToken, OperatorToken, ConnectorToken, TokenizedRule } from '../../models/token.model';
 import { RuleEditorFormatterComponent } from '../rule-editor-formatter/rule-editor-formatter.component';
+import { RuleCriteria } from '../../models/multi-criteria-rule.model';
 
 @Component({
   selector: 'app-rule-editor',
@@ -31,6 +34,8 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   private tokenizer = inject(RuleTokenizerService);
   private droolsGenerator = inject(DroolsGeneratorService);
   private patternMatch = inject(PatternMatchService);
+  private criteriaParser = inject(CriteriaParserService);
+  private multiCriteriaParser = inject(MultiCriteriaParserService);
 
   @ViewChild('inputEl') inputEl!: ElementRef<HTMLTextAreaElement>;
   @ViewChild('suggestionList') suggestionList!: ElementRef<HTMLUListElement>;
@@ -48,6 +53,9 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   deviationWarning = signal<string | null>(null);
   savedRuleDisplay = signal<TokenizedRule | null>(null);
   isDarkTheme = signal(true);
+  isAdvancedMode = signal(false);
+  criteriaText = signal<{ [key: string]: string }>({});  // Store criteria section texts
+  showCriteriaHelp = signal(false);
 
   tokenized = computed(() => {
     const cfg = this.config();
@@ -60,20 +68,87 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
 
   bracketWarning = computed(() => {
     const raw = this.rawText();
+    if (!raw.trim()) return null;
+    
     const result = this.validateBrackets(raw);
     return result.valid ? null : result.message;
   });
 
   completenessWarning = computed(() => {
-    const tok = this.tokenized();
     const cfg = this.config();
-    if (!tok || !cfg) return null;
+    if (!cfg) return null;
     
-    // Only show completeness warnings if there's some content
-    if (this.rawText().trim().length === 0) return null;
+    const rawText = this.rawText().trim();
+    if (rawText.length === 0) return null;
     
-    const result = this.validateRuleCompleteness(tok.tokens, cfg);
-    return result.valid ? null : result.message;
+    // In advanced mode, parse the multi-criteria rule first
+    if (this.isAdvancedMode()) {
+      const parsed = this.multiCriteriaParser.parseCompleteRule(rawText, cfg);
+      
+      // Validate main statement if it exists
+      if (parsed.mainStatement) {
+        const result = this.validateRuleCompleteness(parsed.mainTokens, cfg, false);
+        if (!result.valid) return result.message;
+      }
+      
+      // Validate each criteria section condition (skip phrase check for these)
+      for (const section of parsed.criteriaSections) {
+        for (const tokens of section.tokens) {
+          const result = this.validateRuleCompleteness(tokens, cfg, true);
+          if (!result.valid) return result.message;
+        }
+      }
+      
+      return null;
+    } else {
+      // Simple mode validation
+      const tok = this.tokenized();
+      if (!tok) return null;
+      
+      const result = this.validateRuleCompleteness(tok.tokens, cfg);
+      return result.valid ? null : result.message;
+    }
+  });
+
+  formattedSavedRuleSections = computed(() => {
+    const cfg = this.config();
+    if (!cfg || !this.isAdvancedMode()) return [];
+    
+    const text = this.rawText();
+    if (!text) return [];
+    
+    const parsed = this.multiCriteriaParser.parseCompleteRule(text, cfg);
+    
+    const sections: Array<{ isHeader: boolean; text?: string; tokens?: RuleToken[] }> = [];
+    
+    // Add main statement
+    if (parsed.mainStatement) {
+      sections.push({
+        isHeader: false,
+        tokens: parsed.mainTokens
+      });
+    }
+    
+    // Add criteria sections
+    for (const section of parsed.criteriaSections) {
+      // Add section header
+      sections.push({
+        isHeader: true,
+        text: section.sectionTitle
+      });
+      
+      // Add each numbered condition
+      for (let i = 0; i < section.conditions.length; i++) {
+        const conditionText = `${i + 1}. ${section.conditions[i]}`;
+        const tokenized = this.tokenizer.tokenize(conditionText, cfg);
+        sections.push({
+          isHeader: false,
+          tokens: tokenized.tokens
+        });
+      }
+    }
+    
+    return sections;
   });
 
   ngOnInit(): void {
@@ -88,6 +163,12 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
       this.isDarkTheme.set(true);
       document.documentElement.removeAttribute('data-theme');
     }
+
+    // Load advanced mode from localStorage
+    const savedAdvancedMode = localStorage.getItem('rule-editor-advanced-mode');
+    if (savedAdvancedMode === 'true') {
+      this.isAdvancedMode.set(true);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -99,13 +180,55 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   }
 
   onPaste(e: Event): void {
-    // Let the paste complete, then tokenize
-    setTimeout(() => {
-      const ta = e.target as HTMLTextAreaElement;
-      this.syncFromInput(ta);
-      // Hide suggestions after paste to show the tokenized result
+    if (this.isAdvancedMode()) {
+      // In advanced mode, format the pasted text
+      const clipboardEvent = e as ClipboardEvent;
+      const pastedText = clipboardEvent.clipboardData?.getData('text');
+      
+      if (pastedText) {
+        e.preventDefault();
+        
+        // Format the pasted text with proper line breaks
+        let formatted = pastedText;
+        
+        // Ensure criteria headers are on new lines
+        formatted = formatted.replace(/([^\n])\s*(Applicability Criteria:)/gi, '$1\n\n$2');
+        formatted = formatted.replace(/([^\n])\s*(TRIMS Specific Criteria:)/gi, '$1\n\n$2');
+        formatted = formatted.replace(/([^\n])\s*(Additional Criteria:)/gi, '$1\n\n$2');
+        
+        // Ensure numbered conditions are on new lines (but not if already on one)
+        formatted = formatted.replace(/([^\n])\s+(\d+\.)/g, '$1\n$2');
+        
+        // Clean up multiple consecutive newlines (max 2)
+        formatted = formatted.replace(/\n{3,}/g, '\n\n');
+        
+        const ta = this.inputEl?.nativeElement;
+        if (ta) {
+          const start = ta.selectionStart;
+          const end = ta.selectionEnd;
+          const currentText = ta.value;
+          
+          const newText = currentText.substring(0, start) + formatted + currentText.substring(end);
+          ta.value = newText;
+          this.rawText.set(newText);
+          
+          const newCursorPos = start + formatted.length;
+          ta.selectionStart = ta.selectionEnd = newCursorPos;
+          this.cursorPosition.set(newCursorPos);
+        }
+      }
+      
+      // Hide suggestions after paste
       this.showSuggestions.set(false);
-    }, 0);
+    } else {
+      // Simple mode - let paste complete, then tokenize
+      setTimeout(() => {
+        const ta = e.target as HTMLTextAreaElement;
+        this.syncFromInput(ta);
+        // Hide suggestions after paste to show the tokenized result
+        this.showSuggestions.set(false);
+      }, 0);
+    }
   }
 
   onKeyUp(e: Event): void {
@@ -152,6 +275,37 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
       const idx = this.selectedIndex();
       if (idx >= 0 && idx < suggestions.length) {
         this.applySuggestion(suggestions[idx]);
+      }
+    } else if (this.isAdvancedMode()) {
+      // Auto-numbering in advanced mode
+      const ta = this.inputEl?.nativeElement;
+      if (!ta) return;
+      
+      const ke = e as KeyboardEvent;
+      if (ke.shiftKey) return; // Allow Shift+Enter for new line without numbering
+      
+      const text = ta.value;
+      const cursorPos = ta.selectionStart;
+      const textBeforeCursor = text.substring(0, cursorPos);
+      const lines = textBeforeCursor.split('\n');
+      const currentLine = lines[lines.length - 1];
+      
+      // Check if current line starts with a number
+      const numberMatch = /^(\d+)\.\s*(.*)$/.exec(currentLine.trim());
+      
+      if (numberMatch) {
+        e.preventDefault();
+        const currentNumber = parseInt(numberMatch[1], 10);
+        const nextNumber = currentNumber + 1;
+        const newLine = `\n${nextNumber}. `;
+        
+        const newText = text.substring(0, cursorPos) + newLine + text.substring(ta.selectionEnd);
+        const newCursorPos = cursorPos + newLine.length;
+        
+        ta.value = newText;
+        ta.selectionStart = ta.selectionEnd = newCursorPos;
+        this.rawText.set(newText);
+        this.cursorPosition.set(newCursorPos);
       }
     }
   }
@@ -232,7 +386,19 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
       insert += ' ';
     }
 
-    if (prefix && (item.kind === 'dataElement' || item.kind === 'phrase' || item.kind === 'operator' || item.kind === 'connector')) {
+    // Handle criteriaSection specially - replace the entire current line
+    if (item.kind === 'criteriaSection' && prefix) {
+      // Find the start of the current line
+      const lines = before.split('\n');
+      const currentLine = lines[lines.length - 1];
+      const beforeCurrentLine = lines.slice(0, -1).join('\n');
+      const newBefore = (beforeCurrentLine ? beforeCurrentLine + '\n' : '') + insert;
+      const newText = newBefore + after;
+      this.rawText.set(newText);
+      ta.value = newText;
+      ta.selectionStart = ta.selectionEnd = newBefore.length;
+      this.cursorPosition.set(newBefore.length);
+    } else if (prefix && (item.kind === 'dataElement' || item.kind === 'phrase' || item.kind === 'operator' || item.kind === 'connector')) {
       const beforeWithoutPrefix = before.slice(0, before.length - prefix.length);
       const newBefore = beforeWithoutPrefix + insert;
       const newText = newBefore + after;
@@ -279,6 +445,102 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
     }
   }
 
+  toggleAdvancedMode(): void {
+    const newMode = !this.isAdvancedMode();
+    this.isAdvancedMode.set(newMode);
+    localStorage.setItem('rule-editor-advanced-mode', newMode ? 'true' : 'false');
+    
+    if (!newMode) {
+      // Clear criteria when disabling advanced mode
+      this.criteriaText.set({});
+    }
+  }
+
+  onCriteriaInput(sectionId: string, event: Event): void {
+    const ta = event.target as HTMLTextAreaElement;
+    const current = this.criteriaText();
+    this.criteriaText.set({ ...current, [sectionId]: ta.value });
+  }
+
+  onCriteriaKeyDown(sectionId: string, event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      const ta = event.target as HTMLTextAreaElement;
+      const text = ta.value;
+      const cursorPos = ta.selectionStart;
+      
+      // Find the last number in the text before cursor
+      const textBeforeCursor = text.substring(0, cursorPos);
+      const lines = textBeforeCursor.split('\n');
+      
+      // Look for numbered items (e.g., "1.", "2.", etc.)
+      let lastNumber = 0;
+      for (const line of lines) {
+        const match = /^(\d+)\.\s*/.exec(line.trim());
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > lastNumber) {
+            lastNumber = num;
+          }
+        }
+      }
+      
+      // If we found a number, insert the next number
+      if (lastNumber > 0) {
+        event.preventDefault();
+        const nextNumber = lastNumber + 1;
+        const newLine = `\n${nextNumber}. `;
+        
+        const newText = text.substring(0, cursorPos) + newLine + text.substring(ta.selectionEnd);
+        const newCursorPos = cursorPos + newLine.length;
+        
+        // Update the value
+        ta.value = newText;
+        ta.selectionStart = ta.selectionEnd = newCursorPos;
+        
+        // Update the signal
+        const current = this.criteriaText();
+        this.criteriaText.set({ ...current, [sectionId]: newText });
+      } else {
+        // First line - start with "1. "
+        event.preventDefault();
+        const newLine = textBeforeCursor.trim() === '' ? '1. ' : '\n1. ';
+        
+        const newText = text.substring(0, cursorPos) + newLine + text.substring(ta.selectionEnd);
+        const newCursorPos = cursorPos + newLine.length;
+        
+        ta.value = newText;
+        ta.selectionStart = ta.selectionEnd = newCursorPos;
+        
+        const current = this.criteriaText();
+        this.criteriaText.set({ ...current, [sectionId]: newText });
+      }
+    }
+  }
+
+  insertCriteriaTemplate(): void {
+    const template = `Produce Error If 
+
+Applicability Criteria:
+1. 
+
+TRIMS Specific Criteria:
+1. 
+
+Additional Criteria:
+1. `;
+
+    this.rawText.set(template);
+    const ta = this.inputEl?.nativeElement;
+    if (ta) {
+      ta.value = template;
+      // Position cursor after "Produce Error If "
+      const cursorPos = 'Produce Error If '.length;
+      ta.selectionStart = ta.selectionEnd = cursorPos;
+      ta.focus();
+    }
+    this.showCriteriaHelp.set(false);
+  }
+
   applySample(sample: { ruleText: string }): void {
     this.rawText.set(sample.ruleText);
     const ta = this.inputEl?.nativeElement;
@@ -314,21 +576,56 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
       this.deviationWarning.set(null);
     }
 
-    const whenClause = this.droolsGenerator.generateWhenClause(tok.tokens, cfg);
-    this.generatedDrools.set(whenClause);
+    // Generate Drools based on mode
+    if (this.isAdvancedMode()) {
+      // Parse complete rule text with all criteria
+      const parsed = this.multiCriteriaParser.parseCompleteRule(this.rawText(), cfg);
+      
+      // Group by domain.subdomain
+      const domainGroups = this.multiCriteriaParser.groupByDomain(
+        parsed.mainTokens,
+        parsed.criteriaSections
+      );
+
+      // Generate separate when clauses for each domain
+      const whenClauses: string[] = [];
+      
+      for (const group of domainGroups) {
+        // Combine all tokens for this domain
+        const allTokens = group.tokens.flat();
+        const whenClause = this.droolsGenerator.generateWhenClause(allTokens, cfg);
+        if (whenClause) {
+          whenClauses.push(`// Domain: ${group.domain}\n${whenClause}`);
+        }
+      }
+
+      // Combine all when clauses
+      if (whenClauses.length > 0) {
+        this.generatedDrools.set(whenClauses.join('\n\n'));
+      } else {
+        this.generatedDrools.set('');
+      }
+    } else {
+      // Simple mode: just generate when clause
+      const whenClause = this.droolsGenerator.generateWhenClause(tok.tokens, cfg);
+      this.generatedDrools.set(whenClause);
+    }
+
     this.savedRuleDisplay.set(tok);
   }
 
   /** Validates that the rule is complete and ready to save. */
-  validateRuleCompleteness(tokens: RuleToken[], config: RuleSuggestorConfig): { valid: boolean; message?: string } {
+  validateRuleCompleteness(tokens: RuleToken[], config: RuleSuggestorConfig, skipPhraseCheck = false): { valid: boolean; message?: string } {
     if (tokens.length === 0) {
       return { valid: false, message: 'Rule is empty. Please enter a rule expression.' };
     }
 
-    // Check for phrase at the beginning
-    const hasPhrase = tokens.some(t => t.type === 'phrase');
-    if (!hasPhrase) {
-      return { valid: false, message: 'Rule must start with a phrase (e.g., "Produce Error If").' };
+    // Check for phrase at the beginning (skip for criteria conditions)
+    if (!skipPhraseCheck) {
+      const hasPhrase = tokens.some(t => t.type === 'phrase');
+      if (!hasPhrase) {
+        return { valid: false, message: 'Rule must start with a phrase (e.g., "Produce Error If").' };
+      }
     }
 
     // Check for at least one data element

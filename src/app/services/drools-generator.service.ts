@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { RuleToken, DataElementToken, OperatorToken, ValueToken, ConnectorToken, TextToken } from '../models/token.model';
 import { RuleSuggestorConfig } from '../models/rule-config.model';
+import { MultiCriteriaRule, RuleCriteria } from '../models/multi-criteria-rule.model';
 
 interface DroolsCondition {
   entity: string;
@@ -232,5 +233,80 @@ export class DroolsGeneratorService {
     if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'")))
       return trimmed;
     return `'${trimmed.replace(/'/g, "\\'")}'`;
+  }
+
+  /**
+   * Generate comprehensive Drools output for multi-criteria rules
+   * Includes main rule statement and all criteria sections
+   */
+  generateMultiCriteriaWhenClause(
+    ruleNumber: number,
+    mainTokens: RuleToken[],
+    criterias: RuleCriteria[],
+    config: RuleSuggestorConfig
+  ): string {
+    const lines: string[] = [];
+    
+    // Add rule number header
+    lines.push(`// Rule #${ruleNumber}`);
+    lines.push('');
+    
+    // Generate main rule when clause
+    const mainWhen = this.generateWhenClause(mainTokens, config);
+    if (mainWhen) {
+      lines.push(`// Main Condition:`);
+      lines.push(mainWhen);
+      lines.push('');
+    }
+    
+    // Add criteria sections
+    for (const criteria of criterias) {
+      if (criteria.conditions.length > 0) {
+        lines.push(`// ${criteria.sectionTitle}`);
+        criteria.conditions.forEach((cond) => {
+          lines.push(`//   ${cond.number}. ${cond.text}`);
+        });
+        lines.push('');
+      }
+    }
+    
+    return lines.join('\n');
+  }
+
+  /**
+   * Generate complete Drools rule (rule + when + then) for multi-criteria
+   */
+  generateCompleteMultiCriteriaRule(
+    ruleNumber: number,
+    mainTokens: RuleToken[],
+    criterias: RuleCriteria[],
+    config: RuleSuggestorConfig
+  ): string {
+    const lines: string[] = [];
+    
+    lines.push(`rule "BusinessRule_${ruleNumber}"`);
+    lines.push(`when`);
+    
+    // Generate main when clause
+    const mainWhen = this.generateWhenClause(mainTokens, config);
+    if (mainWhen) {
+      lines.push(`  ${mainWhen}`);
+    }
+    
+    // Add criteria as comments (or could be converted to additional conditions)
+    for (const criteria of criterias) {
+      if (criteria.conditions.length > 0) {
+        lines.push(`  // ${criteria.sectionTitle}`);
+        criteria.conditions.forEach((cond) => {
+          lines.push(`  //   ${cond.number}. ${cond.text}`);
+        });
+      }
+    }
+    
+    lines.push(`then`);
+    lines.push(`  // TODO: Define action (error, warning, etc.)`);
+    lines.push(`end`);
+    
+    return lines.join('\n');
   }
 }

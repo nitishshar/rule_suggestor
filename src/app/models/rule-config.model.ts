@@ -5,6 +5,8 @@ export interface DataElement {
   completeValue: string;
   /** Optional category for grouping in suggestions */
   category?: string;
+  /** Optional category code for advanced mode (e.g., PP, 1, 203) */
+  categoryCode?: string;
 }
 
 /** Initial/phrase suggestion (e.g. "Produce Error If") */
@@ -47,8 +49,31 @@ export interface RulePattern {
   sampleDroolsWhen?: string;
 }
 
+/** Criteria section for advanced multi-criteria rules */
+export interface CriteriaSection {
+  id: string;
+  displayText: string;
+  description: string;
+}
+
+/** Phrase template for advanced mode */
+export interface PhraseTemplate {
+  id: string;
+  template: string;
+  description: string;
+}
+
+/** Advanced mode configuration */
+export interface AdvancedModeConfig {
+  enabled: boolean;
+  criteriaSections: CriteriaSection[];
+  phraseTemplates: PhraseTemplate[];
+}
+
 /** Full JSON-driven configuration */
 export interface RuleSuggestorConfig {
+  /** Advanced multi-criteria mode configuration */
+  advancedMode?: AdvancedModeConfig;
   /** Configurable initial phrase suggestions */
   phraseSuggestions: PhraseSuggestion[];
   /** All available data elements */

@@ -1,4 +1,41 @@
 {
+  "advancedMode": {
+    "enabled": false,
+    "criteriaSections": [
+      {
+        "id": "applicability",
+        "displayText": "Applicability Criteria:",
+        "description": "Define when this rule applies"
+      },
+      {
+        "id": "trims",
+        "displayText": "TRIMS Specific Criteria:",
+        "description": "TRIMS-specific conditions"
+      },
+      {
+        "id": "additional",
+        "displayText": "Additional Criteria:",
+        "description": "Additional conditions"
+      }
+    ],
+    "phraseTemplates": [
+      {
+        "id": "source-unique-must-have",
+        "template": "A Source Unique ID (PP) {condition} must have {field}",
+        "description": "Source ID with condition requiring field"
+      },
+      {
+        "id": "field-populated-but",
+        "template": "{field1} populated but {field2} is {condition}",
+        "description": "Field populated but another field has condition"
+      },
+      {
+        "id": "must-have-valid",
+        "template": "A {field1} must have a valid {field2}",
+        "description": "Field must have valid related field"
+      }
+    ]
+  },
   "phraseSuggestions": [
     {
       "id": "produce-error-if",
@@ -23,6 +60,12 @@
       "displayText": "Require That",
       "insertText": "Require That ",
       "description": "Require condition to be true"
+    },
+    {
+      "id": "produce-error-text",
+      "displayText": "Produce an error if",
+      "insertText": "Produce an error if ",
+      "description": "Raise an error (alternate phrasing)"
     }
   ],
   "dataElements": [
@@ -30,37 +73,99 @@
       "guid": "de-deposits-contract-id",
       "displayValue": "Contract Identifier",
       "completeValue": "Deposits.Deposits Contract.Contract Identifier",
-      "category": "Deposits"
+      "category": "Deposits",
+      "categoryCode": "PP"
     },
     {
       "guid": "de-deposits-account-num",
       "displayValue": "Account Number",
       "completeValue": "Deposits.Deposits Account.Account Number",
-      "category": "Deposits"
+      "category": "Deposits",
+      "categoryCode": "PP"
     },
     {
       "guid": "de-deposits-balance",
       "displayValue": "Balance",
       "completeValue": "Deposits.Deposits Account.Balance",
-      "category": "Deposits"
+      "category": "Deposits",
+      "categoryCode": "1"
     },
     {
       "guid": "de-customer-name",
       "displayValue": "Customer Name",
       "completeValue": "Customer.Customer Name",
-      "category": "Customer"
+      "category": "Customer",
+      "categoryCode": "PP"
     },
     {
       "guid": "de-customer-dob",
       "displayValue": "Date of Birth",
       "completeValue": "Customer.Customer Date of Birth",
-      "category": "Customer"
+      "category": "Customer",
+      "categoryCode": "PP"
     },
     {
       "guid": "de-transaction-amount",
       "displayValue": "Transaction Amount",
       "completeValue": "Transaction.Transaction Amount",
-      "category": "Transaction"
+      "category": "Transaction",
+      "categoryCode": "PP"
+    },
+    {
+      "guid": "de-interest-bearing-flag",
+      "displayValue": "Interest Bearing Flag",
+      "completeValue": "Deposits.Interest Bearing Flag",
+      "category": "Deposits",
+      "categoryCode": "PP"
+    },
+    {
+      "guid": "de-interest-rate-variability",
+      "displayValue": "Interest Rate Variability Type Code",
+      "completeValue": "Deposits.Interest Rate Variability Type Code",
+      "category": "Deposits",
+      "categoryCode": "PP"
+    },
+    {
+      "guid": "de-balance-type-principal",
+      "displayValue": "Balance type in Principal Balance",
+      "completeValue": "Transaction.Balance type in Principal Balance",
+      "category": "Transaction",
+      "categoryCode": "1"
+    },
+    {
+      "guid": "de-other-contingencies",
+      "displayValue": "Other Contingencies",
+      "completeValue": "Transaction.Other Contingencies",
+      "category": "Transaction",
+      "categoryCode": "203"
+    },
+    {
+      "guid": "de-letters-of-credit",
+      "displayValue": "Letters of Credit - Issued",
+      "completeValue": "Transaction.Letters of Credit - Issued",
+      "category": "Transaction",
+      "categoryCode": "4222"
+    },
+    {
+      "guid": "de-lifecycle-status",
+      "displayValue": "life cycle status code",
+      "completeValue": "Deposits.life cycle status code",
+      "category": "Deposits",
+      "categoryCode": "PP"
+    },
+    {
+      "guid": "de-arrangement-relationship",
+      "displayValue": "arr_relationship_type_code",
+      "completeValue": "Arrangement.arr_relationship_type_code",
+      "category": "Arrangement",
+      "categoryCode": "PP"
+    },
+    {
+      "guid": "de-arrangement-purpose",
+      "displayValue": "Arrangement Purpose Type Code",
+      "completeValue": "Arrangement.Arrangement Purpose Type Code",
+      "category": "Arrangement",
+      "categoryCode": "PP"
     }
   ],
   "operators": [

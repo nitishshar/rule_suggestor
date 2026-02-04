@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import { RuleSuggestorConfig, DataElement, PhraseSuggestion, OperatorDefinition, LogicalConnector } from '../models/rule-config.model';
 
-export type SuggestionKind = 'phrase' | 'dataElement' | 'operator' | 'connector' | 'sample';
+export type SuggestionKind = 'phrase' | 'dataElement' | 'operator' | 'connector' | 'sample' | 'criteriaSection';
 
 export interface SuggestionItem {
   kind: SuggestionKind;
-  id: string;
+  id?: string;
   displayText: string;
   insertText: string;
   description?: string;
@@ -137,6 +137,12 @@ export class SuggestionService {
   ): { items: SuggestionItem[]; prefix: string } {
     const trimmed = textBeforeCursor.trimEnd();
     const lastWord = this.getLastWord(trimmed);
+    
+    // Check if we might be typing a criteria section header
+    const criteriaSuggestion = this.getCriteriaSectionSuggestions(textBeforeCursor, config);
+    if (criteriaSuggestion.items.length > 0) {
+      return criteriaSuggestion;
+    }
     
     // Check if text contains data elements (either with <> or matching known data element names)
     const hasLegacyBrackets = trimmed.includes('<') || trimmed.includes('>');
@@ -322,5 +328,64 @@ export class SuggestionService {
   private getLastWord(text: string): string {
     const match = text.match(/\S+$/);
     return match ? match[0] : '';
+  }
+
+  /**
+   * Get criteria section suggestions if user is typing a section header
+   * Triggers when:
+   * - After a blank line (new section likely)
+   * - Typing text that partially matches a criteria section name
+   */
+  private getCriteriaSectionSuggestions(
+    textBeforeCursor: string,
+    config: RuleSuggestorConfig
+  ): { items: SuggestionItem[]; prefix: string } {
+    // Only suggest if advancedMode config exists
+    if (!config.advancedMode || !config.advancedMode.criteriaSections) {
+      return { items: [], prefix: '' };
+    }
+
+    const lines = textBeforeCursor.split('\n');
+    const currentLine = lines[lines.length - 1];
+    const trimmedLine = currentLine.trim();
+    
+    // Don't suggest if line is empty or already ends with ":"
+    if (!trimmedLine || trimmedLine.endsWith(':')) {
+      return { items: [], prefix: '' };
+    }
+
+    // Check if we're on a new line after content (potential section header)
+    const hasContentBefore = lines.length > 1 && lines.slice(0, -1).some(l => l.trim().length > 0);
+    
+    // Don't suggest if we're typing a numbered condition
+    if (/^\d+\.\s/.test(trimmedLine)) {
+      return { items: [], prefix: '' };
+    }
+
+    // Check if current line partially matches any criteria section
+    const matchingSections: SuggestionItem[] = [];
+    
+    for (const section of config.advancedMode.criteriaSections) {
+      const sectionText = section.displayText.toLowerCase();
+      const currentText = trimmedLine.toLowerCase();
+      
+      // Suggest if current text is a prefix of the section name
+      // or if it contains "crit" (partial match for "Criteria")
+      if (sectionText.startsWith(currentText) || 
+          (currentText.length >= 3 && currentText.includes('crit'))) {
+        matchingSections.push({
+          kind: 'criteriaSection',
+          displayText: section.displayText,
+          insertText: section.displayText + '\n1. ',
+          description: section.description,
+        });
+      }
+    }
+
+    if (matchingSections.length > 0) {
+      return { items: matchingSections, prefix: trimmedLine };
+    }
+
+    return { items: [], prefix: '' };
   }
 }
