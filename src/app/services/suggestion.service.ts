@@ -12,7 +12,6 @@ export interface SuggestionItem {
   /** For data elements */
   guid?: string;
   completeValue?: string;
-  category?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -55,7 +54,6 @@ export class SuggestionService {
       insertText: e.displayValue,
       completeValue: e.completeValue,
       guid: e.guid,
-      category: e.category,
     };
   }
 

@@ -72,100 +72,72 @@
     {
       "guid": "de-deposits-contract-id",
       "displayValue": "Contract Identifier",
-      "completeValue": "Deposits.Deposits Contract.Contract Identifier",
-      "category": "Deposits",
-      "categoryCode": "PP"
+      "completeValue": "Deposits.Deposits Contract.Contract Identifier"
     },
     {
       "guid": "de-deposits-account-num",
       "displayValue": "Account Number",
-      "completeValue": "Deposits.Deposits Account.Account Number",
-      "category": "Deposits",
-      "categoryCode": "PP"
+      "completeValue": "Deposits.Deposits Account.Account Number"
     },
     {
       "guid": "de-deposits-balance",
       "displayValue": "Balance",
-      "completeValue": "Deposits.Deposits Account.Balance",
-      "category": "Deposits",
-      "categoryCode": "1"
+      "completeValue": "Deposits.Deposits Account.Balance"
     },
     {
       "guid": "de-customer-name",
       "displayValue": "Customer Name",
-      "completeValue": "Customer.Customer Name",
-      "category": "Customer",
-      "categoryCode": "PP"
+      "completeValue": "Customer.Customer Name"
     },
     {
       "guid": "de-customer-dob",
       "displayValue": "Date of Birth",
-      "completeValue": "Customer.Customer Date of Birth",
-      "category": "Customer",
-      "categoryCode": "PP"
+      "completeValue": "Customer.Customer Date of Birth"
     },
     {
       "guid": "de-transaction-amount",
       "displayValue": "Transaction Amount",
-      "completeValue": "Transaction.Transaction Amount",
-      "category": "Transaction",
-      "categoryCode": "PP"
+      "completeValue": "Transaction.Transaction Amount"
     },
     {
       "guid": "de-interest-bearing-flag",
       "displayValue": "Interest Bearing Flag",
-      "completeValue": "Deposits.Interest Bearing Flag",
-      "category": "Deposits",
-      "categoryCode": "PP"
+      "completeValue": "Deposits.Interest Bearing Flag"
     },
     {
       "guid": "de-interest-rate-variability",
       "displayValue": "Interest Rate Variability Type Code",
-      "completeValue": "Deposits.Interest Rate Variability Type Code",
-      "category": "Deposits",
-      "categoryCode": "PP"
+      "completeValue": "Deposits.Interest Rate Variability Type Code"
     },
     {
       "guid": "de-balance-type-principal",
       "displayValue": "Balance type in Principal Balance",
-      "completeValue": "Transaction.Balance type in Principal Balance",
-      "category": "Transaction",
-      "categoryCode": "1"
+      "completeValue": "Transaction.Balance type in Principal Balance"
     },
     {
       "guid": "de-other-contingencies",
       "displayValue": "Other Contingencies",
-      "completeValue": "Transaction.Other Contingencies",
-      "category": "Transaction",
-      "categoryCode": "203"
+      "completeValue": "Transaction.Other Contingencies"
     },
     {
       "guid": "de-letters-of-credit",
       "displayValue": "Letters of Credit - Issued",
-      "completeValue": "Transaction.Letters of Credit - Issued",
-      "category": "Transaction",
-      "categoryCode": "4222"
+      "completeValue": "Transaction.Letters of Credit - Issued"
     },
     {
       "guid": "de-lifecycle-status",
       "displayValue": "life cycle status code",
-      "completeValue": "Deposits.life cycle status code",
-      "category": "Deposits",
-      "categoryCode": "PP"
+      "completeValue": "Deposits.life cycle status code"
     },
     {
       "guid": "de-arrangement-relationship",
       "displayValue": "arr_relationship_type_code",
-      "completeValue": "Arrangement.arr_relationship_type_code",
-      "category": "Arrangement",
-      "categoryCode": "PP"
+      "completeValue": "Arrangement.arr_relationship_type_code"
     },
     {
       "guid": "de-arrangement-purpose",
       "displayValue": "Arrangement Purpose Type Code",
-      "completeValue": "Arrangement.Arrangement Purpose Type Code",
-      "category": "Arrangement",
-      "categoryCode": "PP"
+      "completeValue": "Arrangement.Arrangement Purpose Type Code"
     }
   ],
   "operators": [
@@ -195,113 +167,208 @@
   ],
   "rulePatterns": [
     {
-      "id": "null-or-empty",
-      "name": "Null or Empty Check",
-      "description": "Produce error when a field is null or empty",
-      "exampleText": "Produce Error If <Contract Identifier> is null or empty",
+      "id": "existence-attribute-population",
+      "name": "Existence - Attribute Population",
+      "description": "Check if required attributes are populated",
+      "exampleText": "Produce Error If Contract Identifier is null or empty",
       "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
-      "sampleDroolsWhen": "$contract : Contract( identifier == null || identifier == \"\" )"
+      "sampleDroolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier == null || Contract Identifier == \"\")"
     },
     {
-      "id": "length-check",
-      "name": "Length Check",
-      "description": "Produce error when length exceeds or is below threshold",
-      "exampleText": "Produce Error If <Contract Identifier> is not null or empty and length > 40",
+      "id": "completeness-existence-attribute-population",
+      "name": "Completeness - Existence - Attribute Population",
+      "description": "Ensure all required attributes exist and are populated",
+      "exampleText": "Produce Error If Account Number is null or Balance is null",
       "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
-      "sampleDroolsWhen": "$contract : Contract( identifier != null && identifier.length() > 40 )"
+      "sampleDroolsWhen": "<Deposits.Deposits Account>:(Account Number == null || Balance == null)"
     },
     {
-      "id": "equality",
-      "name": "Equality Check",
-      "description": "Produce error when value equals or not equals",
-      "exampleText": "Produce Error If <Balance> equals 0",
+      "id": "accuracy-conformity-format-consistency",
+      "name": "Accuracy - Conformity - Format Consistency",
+      "description": "Validate data format consistency",
+      "exampleText": "Produce Error If Contract Identifier length greater than 40",
       "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
-      "sampleDroolsWhen": "$account : Account( balance == 0 )"
+      "sampleDroolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier != null && Contract Identifier.length() > 40)"
     },
     {
-      "id": "range",
-      "name": "Range / Relational",
-      "description": "Produce error when value is outside range",
-      "exampleText": "Produce Warning If <Transaction Amount> > 10000",
+      "id": "accuracy-conformity-precision",
+      "name": "Accuracy - Conformity - Precision of Data Value",
+      "description": "Validate precision and accuracy of numeric values",
+      "exampleText": "Produce Error If Balance equals 0 or Balance less than 0",
       "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
-      "sampleDroolsWhen": "$txn : Transaction( amount > 10000 )"
-    }
-  ],
-  "sampleRules": [
-    {
-      "id": "sample-1",
-      "label": "Contract ID null or empty",
-      "ruleText": "Produce Error If Contract Identifier is null or empty",
-      "droolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier == null || Contract Identifier == \"\")"
+      "sampleDroolsWhen": "<Deposits.Deposits Account>:(Balance == 0 || Balance < 0)"
     },
     {
-      "id": "sample-2",
-      "label": "Contract ID length > 40",
-      "ruleText": "Produce Error If Contract Identifier is not null or empty and length greater than 40",
-      "droolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier != null && Contract Identifier.length() > 40)"
+      "id": "accuracy-conformity-truncation",
+      "name": "Accuracy - Conformity - Truncation",
+      "description": "Check for data truncation issues",
+      "exampleText": "Produce Error If Customer Name length greater than 100",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Customer.Customer>:(Customer Name != null && Customer Name.length() > 100)"
     },
     {
-      "id": "sample-3",
-      "label": "Balance equals zero",
-      "ruleText": "Produce Error If Balance equals 0",
-      "droolsWhen": "<Deposits.Deposits Account>:(Balance == 0)"
+      "id": "accuracy-conformity-data-type",
+      "name": "Accuracy - Conformity - Values Conform to Data Type",
+      "description": "Validate values conform to expected data type",
+      "exampleText": "Produce Error If Transaction Amount is null",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Transaction.Transaction>:(Transaction Amount == null)"
     },
     {
-      "id": "sample-4",
-      "label": "Multiple conditions - different entities",
-      "ruleText": "Produce Error If Contract Identifier is empty and Account Number is null",
-      "droolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier == \"\") , <Deposits.Deposits Account>:(Account Number == null)"
+      "id": "accuracy-conformity-format",
+      "name": "Accuracy - Conformity - Values Conform to Format",
+      "description": "Validate values match expected format patterns",
+      "exampleText": "Produce Error If Contract Identifier is not null or empty and length not equals 10",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier != null && Contract Identifier != \"\" && Contract Identifier.length() != 10)"
     },
     {
-      "id": "sample-5",
-      "label": "Multiple conditions - same entity",
-      "ruleText": "Produce Error If Account Number equals 100 and Balance greater than 50",
-      "droolsWhen": "<Deposits.Deposits Account>:(Account Number == 100 , Balance > 50)"
+      "id": "accuracy-conformity-range",
+      "name": "Accuracy - Conformity - Values in Specified Range",
+      "description": "Validate values fall within acceptable range",
+      "exampleText": "Produce Error If Transaction Amount less than 0 or Transaction Amount greater than 999999",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Transaction.Transaction>:(Transaction Amount < 0 || Transaction Amount > 999999)"
+    },
+    {
+      "id": "accuracy-reasonableness-logical",
+      "name": "Accuracy - Reasonableness - Logical Consistency",
+      "description": "Check logical consistency between related fields",
+      "exampleText": "Produce Error If Interest Bearing Flag equals Y and Interest Rate Variability Type Code is null",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits>:(Interest Bearing Flag == 'Y' && Interest Rate Variability Type Code == null)"
+    },
+    {
+      "id": "accuracy-reasonableness-business-rule",
+      "name": "Accuracy - Reasonableness - Values Conform to Business Rule",
+      "description": "Validate values against business rules",
+      "exampleText": "Produce Error If Balance greater than 0 and life cycle status code equals CLOSED",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits Account>:(Balance > 0) , <Deposits.Deposits>:(life cycle status code == 'CLOSED')"
+    },
+    {
+      "id": "accuracy-uniqueness",
+      "name": "Accuracy - Uniqueness - Uniqueness",
+      "description": "Ensure unique values for key identifiers",
+      "exampleText": "Produce Error If Contract Identifier is not null or empty",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier != null && Contract Identifier != \"\")"
+    },
+    {
+      "id": "accuracy-validity-domain",
+      "name": "Accuracy - Validity - Domain of Predefined Values",
+      "description": "Validate values against predefined domain list",
+      "exampleText": "Produce Error If life cycle status code not in (ACTIVE,CLOSED,PENDING)",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits>:(life cycle status code not in ('ACTIVE', 'CLOSED', 'PENDING'))"
     }
   ],
   "ruleStyleReference": [
     {
-      "title": "Null/Empty",
+      "title": "Existence - Attribute Population",
       "examples": [
-        "Produce Error If <Field> is null",
-        "Produce Error If <Field> is empty",
-        "Produce Error If <Field> is null or empty"
+        "Produce Error If Contract Identifier is null",
+        "Produce Error If Account Number is empty",
+        "Produce Error If Balance is null or empty"
       ]
     },
     {
-      "title": "Length",
+      "title": "Completeness - Existence - Attribute Population",
       "examples": [
-        "Produce Error If <Field> length > 40",
-        "Produce Error If <Field> is not empty and length < 5"
+        "Produce Error If Contract Identifier is null or Account Number is null",
+        "Produce Error If Balance is null or empty and Customer Name is null or empty"
       ]
     },
     {
-      "title": "Equality",
+      "title": "Accuracy - Conformity - Format Consistency",
       "examples": [
-        "Produce Error If <Field> equals \"value\"",
-        "Produce Warning If <Field> not equals \"expected\""
+        "Produce Error If Contract Identifier length greater than 40",
+        "Produce Error If Contract Identifier is not empty and length not equals 10",
+        "Produce Error If Customer Name length less than 2"
       ]
     },
     {
-      "title": "Relational",
+      "title": "Accuracy - Conformity - Precision of Data Value",
       "examples": [
-        "Produce Error If <Amount> > 10000",
-        "Produce Error If <Balance> < 0",
-        "Produce Warning If <Date> >= \"2024-01-01\""
+        "Produce Error If Balance equals 0",
+        "Produce Error If Transaction Amount less than 0",
+        "Produce Warning If Balance not equals Transaction Amount"
       ]
     },
     {
-      "title": "Combined (and / or)",
+      "title": "Accuracy - Conformity - Truncation",
       "examples": [
-        "Produce Error If <A> is null and <B> is empty",
-        "Produce Error If <A> equals 0 or <B> < 100"
+        "Produce Error If Customer Name length greater than 100",
+        "Produce Error If Contract Identifier is not null and length greater than 255"
       ]
     },
     {
-      "title": "In / Not in (list)",
+      "title": "Accuracy - Conformity - Values Conform to Data Type",
       "examples": [
-        "Produce Error If <Status> in (ACTIVE, PENDING)",
-        "Produce Warning If <Code> not in (100, 200, 300)"
+        "Produce Error If Transaction Amount is null",
+        "Produce Error If Date of Birth is null or empty"
+      ]
+    },
+    {
+      "title": "Accuracy - Conformity - Values Conform to Format",
+      "examples": [
+        "Produce Error If Contract Identifier is not null and length not equals 10",
+        "Produce Error If Account Number length not equals 12"
+      ]
+    },
+    {
+      "title": "Accuracy - Conformity - Values in Specified Range",
+      "examples": [
+        "Produce Error If Transaction Amount less than 0",
+        "Produce Error If Balance greater than 999999999",
+        "Produce Error If Transaction Amount less than 1 or Transaction Amount greater than 1000000"
+      ]
+    },
+    {
+      "title": "Accuracy - Reasonableness - Logical Consistency",
+      "examples": [
+        "Produce Error If Interest Bearing Flag equals Y and Interest Rate Variability Type Code is null",
+        "Produce Error If Balance greater than 0 and Account Number is null"
+      ]
+    },
+    {
+      "title": "Accuracy - Reasonableness - Values Conform to Business Rule",
+      "examples": [
+        "Produce Error If Balance greater than 0 and life cycle status code equals CLOSED",
+        "Produce Error If Transaction Amount greater than Balance"
+      ]
+    },
+    {
+      "title": "Accuracy - Uniqueness - Uniqueness",
+      "examples": [
+        "Produce Error If Contract Identifier is not null or empty",
+        "Produce Error If Account Number is not null"
+      ]
+    },
+    {
+      "title": "Accuracy - Validity - Domain of Predefined Values",
+      "examples": [
+        "Produce Error If life cycle status code not in (ACTIVE,CLOSED,PENDING)",
+        "Produce Error If Contract Identifier in (INVALID,TEST,TEMP)",
+        "Produce Warning If Arrangement Purpose Type Code not in (BUSINESS,PERSONAL)"
+      ]
+    },
+    {
+      "title": "Multi-Criteria - Basic Structure",
+      "examples": [
+        "Produce Error If Contract Identifier is not null\n\nApplicability Criteria:\n1. Balance is not null\n2. Account Number greater than 1000"
+      ]
+    },
+    {
+      "title": "Multi-Criteria - With TRIMS",
+      "examples": [
+        "Produce Error If Contract Identifier is null or empty\n\nApplicability Criteria:\n1. Balance is not null\n\nTRIMS Specific Criteria:\n1. Transaction Amount greater than 100\n2. Customer Name is not null or empty"
+      ]
+    },
+    {
+      "title": "Multi-Criteria - All Sections",
+      "examples": [
+        "Produce Error If Contract Identifier is not null\n\nApplicability Criteria:\n1. life cycle status code not equals CLOSED\n\nTRIMS Specific Criteria:\n1. Balance type in Principal Balance\n\nAdditional Criteria:\n1. Arrangement Purpose Type Code is not null"
       ]
     }
   ]

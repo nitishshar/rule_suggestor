@@ -10,9 +10,6 @@
       <button type="button" class="btn-icon" (click)="toggleInfo()" [class.active]="showInfoPanel()" title="Rule styles reference">
         <span class="icon-info">ⓘ</span>
       </button>
-      <button type="button" class="btn-icon" (click)="toggleSamples()" [class.active]="showSamples()" title="Sample rules">
-        Sample
-      </button>
     </div>
   </div>
 
@@ -139,18 +136,6 @@
             <li *ngFor="let ex of ref.examples">{{ ex }}</li>
           </ul>
         </div>
-      </div>
-      <div class="samples-panel panel" *ngIf="showSamples()">
-        <h3>Sample rules</h3>
-        <button
-          type="button"
-          class="sample-item"
-          *ngFor="let s of cfg.sampleRules"
-          (mousedown)="applySample(s)"
-        >
-          <span class="sample-label">{{ s.label }}</span>
-          <span class="sample-text">{{ s.ruleText }}</span>
-        </button>
       </div>
     </div>
   </div>

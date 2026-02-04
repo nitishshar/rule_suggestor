@@ -3,10 +3,6 @@ export interface DataElement {
   guid: string;
   displayValue: string;
   completeValue: string;
-  /** Optional category for grouping in suggestions */
-  category?: string;
-  /** Optional category code for advanced mode (e.g., PP, 1, 203) */
-  categoryCode?: string;
 }
 
 /** Initial/phrase suggestion (e.g. "Produce Error If") */
@@ -84,8 +80,6 @@ export interface RuleSuggestorConfig {
   logicalConnectors: LogicalConnector[];
   /** Predefined rule patterns for DQ rules */
   rulePatterns: RulePattern[];
-  /** Sample rules for quick insert */
-  sampleRules: { id: string; label: string; ruleText: string; droolsWhen?: string }[];
   /** Rule style reference (shown on info icon hover) */
   ruleStyleReference: { title: string; examples: string[] }[];
 }

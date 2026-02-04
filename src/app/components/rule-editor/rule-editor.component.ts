@@ -48,7 +48,6 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   selectedIndex = signal(0);
   showSuggestions = signal(false);
   showInfoPanel = signal(false);
-  showSamples = signal(false);
   generatedDrools = signal('');
   deviationWarning = signal<string | null>(null);
   savedRuleDisplay = signal<TokenizedRule | null>(null);
@@ -264,7 +263,6 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
     setTimeout(() => {
       this.showSuggestions.set(false);
       this.showInfoPanel.set(false);
-      this.showSamples.set(false);
     }, 200);
   }
 
@@ -422,12 +420,6 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
 
   toggleInfo(): void {
     this.showInfoPanel.update((v) => !v);
-    if (this.showInfoPanel()) this.showSamples.set(false);
-  }
-
-  toggleSamples(): void {
-    this.showSamples.update((v) => !v);
-    if (this.showSamples()) this.showInfoPanel.set(false);
   }
 
   toggleTheme(): void {
@@ -539,17 +531,6 @@ Additional Criteria:
       ta.focus();
     }
     this.showCriteriaHelp.set(false);
-  }
-
-  applySample(sample: { ruleText: string }): void {
-    this.rawText.set(sample.ruleText);
-    const ta = this.inputEl?.nativeElement;
-    if (ta) {
-      ta.value = sample.ruleText;
-      ta.selectionStart = ta.selectionEnd = sample.ruleText.length;
-    }
-    this.showSamples.set(false);
-    this.updateSuggestions(sample.ruleText, sample.ruleText.length);
   }
 
   saveRule(): void {
