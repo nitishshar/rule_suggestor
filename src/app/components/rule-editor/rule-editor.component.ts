@@ -334,13 +334,18 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
     }
 
     // Check if rule ends with a connector (incomplete condition)
+    // Note: closing paren ")" and comma "," are valid at the end
     const lastNonSpaceToken = this.getLastNonSpaceToken(tokens);
     if (lastNonSpaceToken) {
       if (lastNonSpaceToken.type === 'connector') {
         const connToken = lastNonSpaceToken as ConnectorToken;
-        const connDef = config.logicalConnectors.find(c => c.id === connToken.connectorId);
-        const connText = connDef?.displayText || 'connector';
-        return { valid: false, message: `Rule ends with "${connText}" but has no following condition.` };
+        // Only flag "and", "or", and "(" as incomplete at the end
+        const incompleteConnectors = ['and', 'or', 'openParen'];
+        if (incompleteConnectors.includes(connToken.connectorId)) {
+          const connDef = config.logicalConnectors.find(c => c.id === connToken.connectorId);
+          const connText = connDef?.displayText || 'connector';
+          return { valid: false, message: `Rule ends with "${connText}" but has no following condition.` };
+        }
       }
       
       // Check if rule ends with an operator that needs a value
@@ -351,6 +356,9 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
         const noValueOps = ['== null', '!= null', 'empty', 'not empty', 'nullOrEmpty', 'notNullOrEmpty'];
         
         if (droolsOp && !noValueOps.includes(droolsOp)) {
+          if (droolsOp === 'in' || droolsOp === 'not in') {
+            return { valid: false, message: `Operator "${opToken.displayText}" must be followed by a list in parentheses.` };
+          }
           return { valid: false, message: `Operator "${opToken.displayText}" is missing a value.` };
         }
       }
@@ -386,7 +394,21 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
             k++;
           }
           
-          // Check if next token is value or text (not connector or data element)
+          // Special case: "in" and "not in" operators are followed by "(" which is valid
+          if (droolsOp === 'in' || droolsOp === 'not in') {
+            // Check if followed by "("
+            if (k < tokens.length && tokens[k].type === 'connector') {
+              const connToken = tokens[k] as ConnectorToken;
+              if (connToken.connectorId === 'openParen') {
+                // Valid - "in (" pattern detected
+                continue;
+              }
+            }
+            // If not followed by "(", it's missing the list
+            return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" must be followed by a list in parentheses.` };
+          }
+          
+          // For other operators, check if next token is value or text (not connector or data element)
           if (k >= tokens.length || (tokens[k].type !== 'text' && tokens[k].type !== 'value')) {
             return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" is missing a value.` };
           }

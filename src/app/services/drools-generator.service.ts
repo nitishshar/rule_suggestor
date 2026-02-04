@@ -62,8 +62,59 @@ export class DroolsGeneratorService {
             conditionStr = `(${attribute} == null || ${attribute} == "")`;
           } else if (droolsOp === 'notNullOrEmpty') {
             conditionStr = `(${attribute} != null && ${attribute} != "")`;
+          } else if (droolsOp === 'in' || droolsOp === 'not in') {
+            // Special handling for "in" and "not in" - collect everything including ( ) and ,
+            const listValues: string[] = [];
+            let currentValue = '';
+            let parenDepth = 0;
+            let foundOpenParen = false;
+            
+            while (i < tokens.length) {
+              const tok = tokens[i];
+              
+              // Track parentheses depth
+              if (tok.type === 'connector') {
+                const connToken = tok as ConnectorToken;
+                if (connToken.connectorId === 'openParen') {
+                  parenDepth++;
+                  foundOpenParen = true;
+                } else if (connToken.connectorId === 'closeParen') {
+                  // Add the last value before closing
+                  if (currentValue.trim()) {
+                    listValues.push(this.quoteWithSingleQuotes(currentValue.trim()));
+                    currentValue = '';
+                  }
+                  parenDepth--;
+                  i++;
+                  if (parenDepth === 0) break; // Completed the list
+                } else if (connToken.connectorId === 'comma') {
+                  // End current value, start next
+                  if (currentValue.trim()) {
+                    listValues.push(this.quoteWithSingleQuotes(currentValue.trim()));
+                    currentValue = '';
+                  }
+                } else {
+                  // Hit "and" or "or" - stop here
+                  break;
+                }
+              } else if (tok.type === 'text' || tok.type === 'value') {
+                const txt = tok.displayText.trim();
+                if (txt) currentValue += txt;
+              } else if (tok.type === 'dataElement' || tok.type === 'operator') {
+                // Hit another data element or operator - stop
+                break;
+              }
+              i++;
+            }
+            
+            if (foundOpenParen && listValues.length > 0) {
+              const listStr = `(${listValues.join(', ')})`;
+              conditionStr = `${attribute} ${droolsOp} ${listStr}`;
+            } else {
+              conditionStr = `${attribute} ${droolsOp}`;
+            }
           } else {
-            // Operators that need a value
+            // Operators that need a value (equals, >, <, etc.)
             let valueStr = '';
             while (i < tokens.length) {
               const tok = tokens[i];
@@ -171,5 +222,15 @@ export class DroolsGeneratorService {
     if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'")))
       return trimmed;
     return `"${trimmed.replace(/"/g, '\\"')}"`;
+  }
+
+  private quoteWithSingleQuotes(val: string): string {
+    const trimmed = val.trim();
+    if (trimmed === 'null') return 'null';
+    if (trimmed === 'true' || trimmed === 'false') return trimmed;
+    if (/^-?\d+(\.\d+)?$/.test(trimmed)) return trimmed;
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'")))
+      return trimmed;
+    return `'${trimmed.replace(/'/g, "\\'")}'`;
   }
 }
