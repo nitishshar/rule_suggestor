@@ -116,18 +116,35 @@ export class DroolsGeneratorService {
             }
           } else {
             // Operators that need a value (equals, >, <, etc.)
+            // Check if next token is a data element (for comparing two data elements)
             let valueStr = '';
-            while (i < tokens.length) {
-              const tok = tokens[i];
-              if (tok.type === 'connector' || tok.type === 'dataElement' || tok.type === 'operator') break;
-              if (tok.type === 'text' || tok.type === 'value') {
-                const txt = tok.displayText.trim();
-                if (txt) valueStr += txt;
+            let isDataElementComparison = false;
+            let comparisonAttribute = '';
+            
+            if (i < tokens.length && tokens[i].type === 'dataElement') {
+              // Comparing two data elements (e.g., "Balance > Transaction Amount")
+              const valueDataToken = tokens[i] as DataElementToken;
+              const { attribute: valueAttr } = this.parseCompleteValue(valueDataToken.completeValue);
+              comparisonAttribute = valueAttr;
+              isDataElementComparison = true;
+              i++; // consume data element
+            } else {
+              // Regular value comparison
+              while (i < tokens.length) {
+                const tok = tokens[i];
+                if (tok.type === 'connector' || tok.type === 'dataElement' || tok.type === 'operator') break;
+                if (tok.type === 'text' || tok.type === 'value') {
+                  const txt = tok.displayText.trim();
+                  if (txt) valueStr += txt;
+                }
+                i++;
               }
-              i++;
             }
 
-            if (!valueStr) {
+            if (isDataElementComparison) {
+              // Data element comparison - don't quote the value
+              conditionStr = `${attribute} ${droolsOp} ${comparisonAttribute}`;
+            } else if (!valueStr) {
               conditionStr = `${attribute} ${droolsOp}`;
             } else {
               const quotedValue = this.quoteIfString(valueStr);

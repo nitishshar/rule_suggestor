@@ -684,10 +684,30 @@ Additional Criteria:
       }
     }
 
-    // Check each data element has an operator
+    // First pass: identify data elements that are used as values (after operators)
+    const dataElementsUsedAsValues = new Set<number>();
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].type === 'operator') {
+        // Check if next non-space token is a data element (used as value)
+        let nextIdx = i + 1;
+        while (nextIdx < tokens.length && tokens[nextIdx].type === 'text' && tokens[nextIdx].displayText.trim() === '') {
+          nextIdx++;
+        }
+        if (nextIdx < tokens.length && tokens[nextIdx].type === 'dataElement') {
+          dataElementsUsedAsValues.add(nextIdx);
+        }
+      }
+    }
+
+    // Check each data element has an operator (unless it's used as a value)
     for (let i = 0; i < tokens.length; i++) {
       if (tokens[i].type === 'dataElement') {
         const dataEl = tokens[i] as DataElementToken;
+        
+        // Skip validation if this data element is being used as a value in a comparison
+        if (dataElementsUsedAsValues.has(i)) {
+          continue;
+        }
         
         // Look for operator after data element (skip text/spaces)
         let j = i + 1;
@@ -708,7 +728,7 @@ Additional Criteria:
         const noValueOps = ['== null', '!= null', 'empty', 'not empty', 'nullOrEmpty', 'notNullOrEmpty'];
         
         if (droolsOp && !noValueOps.includes(droolsOp)) {
-          // This operator needs a value - check if there's text/value after it
+          // This operator needs a value - check if there's text/value/dataElement after it
           let k = j + 1;
           while (k < tokens.length && tokens[k].type === 'text' && tokens[k].displayText.trim() === '') {
             k++;
@@ -728,15 +748,17 @@ Additional Criteria:
             return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" must be followed by a list in parentheses.` };
           }
           
-          // For other operators, check if next token is value or text (not connector or data element)
-          if (k >= tokens.length || (tokens[k].type !== 'text' && tokens[k].type !== 'value')) {
+          // For other operators, check if next token is value, text, or dataElement (for comparisons)
+          if (k >= tokens.length || (tokens[k].type !== 'text' && tokens[k].type !== 'value' && tokens[k].type !== 'dataElement')) {
             return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" is missing a value.` };
           }
           
-          // Make sure the value is not empty
-          const valueText = tokens[k].displayText.trim();
-          if (!valueText) {
-            return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" has an empty value.` };
+          // Make sure the value is not empty (unless it's a data element)
+          if (tokens[k].type !== 'dataElement') {
+            const valueText = tokens[k].displayText.trim();
+            if (!valueText) {
+              return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" has an empty value.` };
+            }
           }
         }
       }

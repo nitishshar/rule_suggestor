@@ -143,6 +143,11 @@
   "operators": [
     { "id": "is-null", "symbol": "is null", "displayLabel": "is null", "droolsOperator": "== null", "valueTypes": ["any"] },
     { "id": "is-not-null", "symbol": "is not null", "displayLabel": "is not null", "droolsOperator": "!= null", "valueTypes": ["any"] },
+    { "id": "is-present", "symbol": "is present", "displayLabel": "is present", "droolsOperator": "!= null", "valueTypes": ["any"] },
+    { "id": "populated", "symbol": "populated", "displayLabel": "populated", "droolsOperator": "!= null", "valueTypes": ["any"] },
+    { "id": "present", "symbol": "present", "displayLabel": "present", "droolsOperator": "!= null", "valueTypes": ["any"] },
+    { "id": "is-null-or-blank", "symbol": "is null or blank", "displayLabel": "is null or blank", "droolsOperator": "nullOrEmpty", "valueTypes": ["any"] },
+    { "id": "is", "symbol": "is", "displayLabel": "is", "droolsOperator": "==", "valueTypes": ["string", "number", "boolean", "date"] },
     { "id": "eq", "symbol": "equals", "displayLabel": "equals", "droolsOperator": "==", "valueTypes": ["string", "number", "boolean", "date"] },
     { "id": "ne", "symbol": "not equals", "displayLabel": "not equals", "droolsOperator": "!=", "valueTypes": ["string", "number", "boolean", "date"] },
     { "id": "gt", "symbol": ">", "displayLabel": "greater than", "droolsOperator": ">", "valueTypes": ["number", "date"] },
@@ -172,6 +177,46 @@
       "description": "Check if required attributes are populated",
       "exampleText": "Produce Error If Contract Identifier is null or empty",
       "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier == null || Contract Identifier == \"\")"
+    },
+    {
+      "id": "existence-attribute-populated",
+      "name": "Existence - Attribute Populated (using populated/present)",
+      "description": "Check if attributes are populated using alternative operators",
+      "exampleText": "Produce Error If Contract Identifier populated",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier != null)"
+    },
+    {
+      "id": "existence-attribute-is-present",
+      "name": "Existence - Attribute Is Present",
+      "description": "Check if attributes are present using 'is present' operator",
+      "exampleText": "Produce Error If Contract Identifier is present",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier != null)"
+    },
+    {
+      "id": "equality-natural-is",
+      "name": "Equality - Natural Language with 'is'",
+      "description": "Check equality using natural 'is' operator",
+      "exampleText": "Produce Error If Balance is 0",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "value", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits Account>:(Balance == 0)"
+    },
+    {
+      "id": "comparison-data-elements",
+      "name": "Comparison - Between Data Elements",
+      "description": "Compare values between two data elements",
+      "exampleText": "Produce Error If Balance greater than Transaction Amount",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "dataElement", "connector"],
+      "sampleDroolsWhen": "<Deposits.Deposits Account>:(Balance > Transaction Amount)"
+    },
+    {
+      "id": "existence-null-or-blank",
+      "name": "Existence - Null or Blank Check",
+      "description": "Check if attribute is null or blank (empty string)",
+      "exampleText": "Produce Error If Contract Identifier is null or blank",
+      "nextSuggestions": ["phrase", "dataElement", "operator", "connector"],
       "sampleDroolsWhen": "<Deposits.Deposits Contract>:(Contract Identifier == null || Contract Identifier == \"\")"
     },
     {
@@ -291,6 +336,7 @@
       "title": "Accuracy - Conformity - Precision of Data Value",
       "examples": [
         "Produce Error If Balance equals 0",
+        "Produce Error If Balance is 0",
         "Produce Error If Transaction Amount less than 0",
         "Produce Warning If Balance not equals Transaction Amount"
       ]
@@ -351,6 +397,51 @@
         "Produce Error If life cycle status code not in (ACTIVE,CLOSED,PENDING)",
         "Produce Error If Contract Identifier in (INVALID,TEST,TEMP)",
         "Produce Warning If Arrangement Purpose Type Code not in (BUSINESS,PERSONAL)"
+      ]
+    },
+    {
+      "title": "Existence - Alternative Operators (populated/present)",
+      "examples": [
+        "Produce Error If Contract Identifier populated",
+        "Produce Error If Account Number present",
+        "Produce Error If Account Number is present",
+        "Produce Warning If Balance populated and Transaction Amount is null",
+        "Produce Error If Customer Name present and Date of Birth is null"
+      ]
+    },
+    {
+      "title": "Existence - Null or Blank",
+      "examples": [
+        "Produce Error If Contract Identifier is null or blank",
+        "Produce Warning If Customer Name is null or blank",
+        "Produce Error If Account Number is null or blank and Balance is null or blank"
+      ]
+    },
+    {
+      "title": "Comparison - Data Element vs Data Element",
+      "examples": [
+        "Produce Error If Balance greater than Transaction Amount",
+        "Produce Error If Transaction Amount less than Balance",
+        "Produce Warning If Balance equals Transaction Amount",
+        "Produce Error If Balance greater than or equal Transaction Amount"
+      ]
+    },
+    {
+      "title": "Mixed Patterns - Combining Different Operators",
+      "examples": [
+        "Produce Error If Contract Identifier populated and Balance greater than Transaction Amount",
+        "Produce Error If Account Number present and Balance is null or blank",
+        "Produce Warning If Balance greater than Transaction Amount and Customer Name is null or blank",
+        "Produce Error If Balance is 0 and Account Number is present"
+      ]
+    },
+    {
+      "title": "Natural Language - Using 'is' for Equality",
+      "examples": [
+        "Produce Error If Balance is 0",
+        "Produce Error If life cycle status code is CLOSED",
+        "Produce Warning If Interest Bearing Flag is Y",
+        "Produce Error If Balance is 0 or Transaction Amount is 0"
       ]
     },
     {
