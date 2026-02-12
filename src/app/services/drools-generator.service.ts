@@ -80,30 +80,30 @@ export class DroolsGeneratorService {
           } else if (droolsOp === 'notNullOrEmpty') {
             conditionStr = `(${attribute} != null && ${attribute} != "")`;
           } else if (droolsOp === 'in' || droolsOp === 'not in') {
-            // Special handling for "in" and "not in" - collect everything including ( ) and ,
+            // Special handling for "in" and "not in" - collect everything including ( ) or [ ] and ,
             const listValues: string[] = [];
             let currentValue = '';
-            let parenDepth = 0;
-            let foundOpenParen = false;
+            let bracketDepth = 0;
+            let foundOpenBracket = false;
             
             while (i < tokens.length) {
               const tok = tokens[i];
               
-              // Track parentheses depth
+              // Track brackets/parentheses depth (both ( ) and [ ] work)
               if (tok.type === 'connector') {
                 const connToken = tok as ConnectorToken;
-                if (connToken.connectorId === 'openParen') {
-                  parenDepth++;
-                  foundOpenParen = true;
-                } else if (connToken.connectorId === 'closeParen') {
+                if (connToken.connectorId === 'openParen' || connToken.connectorId === 'openBracket') {
+                  bracketDepth++;
+                  foundOpenBracket = true;
+                } else if (connToken.connectorId === 'closeParen' || connToken.connectorId === 'closeBracket') {
                   // Add the last value before closing
                   if (currentValue.trim()) {
                     listValues.push(this.quoteWithSingleQuotes(currentValue.trim()));
                     currentValue = '';
                   }
-                  parenDepth--;
+                  bracketDepth--;
                   i++;
-                  if (parenDepth === 0) break; // Completed the list
+                  if (bracketDepth === 0) break; // Completed the list
                 } else if (connToken.connectorId === 'comma') {
                   // End current value, start next
                   if (currentValue.trim()) {
@@ -124,7 +124,7 @@ export class DroolsGeneratorService {
               i++;
             }
             
-            if (foundOpenParen && listValues.length > 0) {
+            if (foundOpenBracket && listValues.length > 0) {
               const listStr = `(${listValues.join(', ')})`;
               conditionStr = `${attribute} ${droolsOp} ${listStr}`;
             } else {

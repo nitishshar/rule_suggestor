@@ -748,18 +748,18 @@ Additional Criteria:
             k++;
           }
           
-          // Special case: "in" and "not in" operators are followed by "(" which is valid
+          // Special case: "in" and "not in" operators are followed by "(" or "[" which is valid
           if (droolsOp === 'in' || droolsOp === 'not in') {
-            // Check if followed by "("
+            // Check if followed by "(" or "["
             if (k < tokens.length && tokens[k].type === 'connector') {
               const connToken = tokens[k] as ConnectorToken;
-              if (connToken.connectorId === 'openParen') {
-                // Valid - "in (" pattern detected
+              if (connToken.connectorId === 'openParen' || connToken.connectorId === 'openBracket') {
+                // Valid - "in (" or "in [" pattern detected
                 continue;
               }
             }
-            // If not followed by "(", it's missing the list
-            return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" must be followed by a list in parentheses.` };
+            // If not followed by "(" or "[", it's missing the list
+            return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" must be followed by a list in parentheses or brackets.` };
           }
           
           // For other operators, check if next token is value, text, or dataElement (for comparisons)

@@ -161,14 +161,18 @@
     { "id": "is-not-null-or-empty", "symbol": "is not null or empty", "displayLabel": "is not null or empty", "droolsOperator": "notNullOrEmpty", "valueTypes": ["any"] },
     { "id": "length-gt", "symbol": "length >", "displayLabel": "length greater than", "droolsOperator": "length >", "valueTypes": ["string"] },
     { "id": "length-lt", "symbol": "length <", "displayLabel": "length less than", "droolsOperator": "length <", "valueTypes": ["string"] },
-    { "id": "in", "symbol": "in", "displayLabel": "in", "droolsOperator": "in", "valueTypes": ["any"] },
-    { "id": "not-in", "symbol": "not in", "displayLabel": "not in", "droolsOperator": "not in", "valueTypes": ["any"] }
+    { "id": "is-not-in", "symbol": "is not in", "displayLabel": "is not in", "droolsOperator": "not in", "valueTypes": ["any"] },
+    { "id": "is-in", "symbol": "is in", "displayLabel": "is in", "droolsOperator": "in", "valueTypes": ["any"] },
+    { "id": "not-in", "symbol": "not in", "displayLabel": "not in", "droolsOperator": "not in", "valueTypes": ["any"] },
+    { "id": "in", "symbol": "in", "displayLabel": "in", "droolsOperator": "in", "valueTypes": ["any"] }
   ],
   "logicalConnectors": [
     { "id": "and", "displayText": "and", "droolsText": "&&" },
     { "id": "or", "displayText": "or", "droolsText": "||" },
     { "id": "openParen", "displayText": "(", "droolsText": "(" },
     { "id": "closeParen", "displayText": ")", "droolsText": ")" },
+    { "id": "openBracket", "displayText": "[", "droolsText": "(" },
+    { "id": "closeBracket", "displayText": "]", "droolsText": ")" },
     { "id": "comma", "displayText": ",", "droolsText": "," }
   ],
   "rulePatterns": [
@@ -396,8 +400,10 @@
       "title": "Accuracy - Validity - Domain of Predefined Values",
       "examples": [
         "Produce Error If life cycle status code not in (ACTIVE,CLOSED,PENDING)",
+        "Produce Error If life cycle status code not in [ACTIVE,CLOSED,PENDING]",
         "Produce Error If Contract Identifier in (INVALID,TEST,TEMP)",
-        "Produce Warning If Arrangement Purpose Type Code not in (BUSINESS,PERSONAL)"
+        "Produce Error If Contract Identifier is in [INVALID,TEST,TEMP]",
+        "Produce Warning If Arrangement Purpose Type Code is not in (BUSINESS,PERSONAL)"
       ]
     },
     {
