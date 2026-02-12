@@ -167,7 +167,15 @@ export class SuggestionService {
           const afterPhrase = trimmed.substring(phraseLength).trim();
           // If there's text after the phrase, use it as prefix for data element filtering
           if (afterPhrase) {
-            return { items: this.getDataElementSuggestions(config, afterPhrase), prefix: afterPhrase };
+            const dataElSuggestions = this.getDataElementSuggestions(config, afterPhrase);
+            // If no data elements match but operators do, suggest operators instead
+            if (dataElSuggestions.length === 0) {
+              const opSuggestions = this.getOperatorSuggestions(config, afterPhrase);
+              if (opSuggestions.length > 0) {
+                return { items: opSuggestions, prefix: afterPhrase };
+              }
+            }
+            return { items: dataElSuggestions, prefix: afterPhrase };
           }
           // Just the phrase with optional space -> suggest data elements
           return { items: this.getDataElementSuggestions(config, ''), prefix: '' };
@@ -190,6 +198,19 @@ export class SuggestionService {
     // Right after a data element (with space) -> suggest operators
     if (endsWithDataElement) {
       return { items: this.getOperatorSuggestions(config, ''), prefix: '' };
+    }
+    
+    // Typing after a data element (e.g., "Balance gr..." for "greater than")
+    if (containsDataElement && lastWord) {
+      // Check if we're typing something after a data element
+      const beforeLastWord = trimmed.slice(0, trimmed.length - lastWord.length).trimEnd();
+      if (this.endsWithDataElement(beforeLastWord, config.dataElements)) {
+        // We're typing after a data element, suggest operators filtered by lastWord
+        const operatorSuggestions = this.getOperatorSuggestions(config, lastWord);
+        if (operatorSuggestions.length > 0) {
+          return { items: operatorSuggestions, prefix: lastWord };
+        }
+      }
     }
 
     // Inside "in (" or "not in (" (comma-separated list) -> suggest ) and ,
@@ -295,12 +316,30 @@ export class SuggestionService {
       return { items: this.getDataElementSuggestions(config, prefix), prefix };
     }
 
-    // Default: mix phrase (if short) and data element by prefix
+    // Default: try data elements first, but fall back to operators if no matches
+    const dataElementSuggestions = this.getDataElementSuggestions(config, lastWord);
+    
+    // If no data elements match, check if we should suggest operators
+    if (dataElementSuggestions.length === 0 && lastWord) {
+      const operatorSuggestions = this.getOperatorSuggestions(config, lastWord);
+      if (operatorSuggestions.length > 0) {
+        return { items: operatorSuggestions, prefix: lastWord };
+      }
+    }
+    
+    // If data elements found, return them
+    if (dataElementSuggestions.length > 0) {
+      return { items: dataElementSuggestions, prefix: lastWord };
+    }
+    
+    // Try phrases if text is short
     if (trimmed.length < 30) {
       const phrases = this.getPhraseSuggestions(config, lastWord);
       if (phrases.length) return { items: phrases, prefix: lastWord };
     }
-    return { items: this.getDataElementSuggestions(config, lastWord), prefix: lastWord };
+    
+    // Return data elements even if empty (user might continue typing)
+    return { items: dataElementSuggestions, prefix: lastWord };
   }
 
   private containsKnownDataElement(text: string, dataElements: DataElement[]): boolean {
