@@ -25,6 +25,22 @@ export class DroolsGeneratorService {
     while (i < tokens.length) {
       const t = tokens[i];
 
+      // Handle standalone parentheses (not part of "in" operator)
+      if (t.type === 'connector') {
+        const connToken = t as ConnectorToken;
+        if (connToken.connectorId === 'openParen' || connToken.connectorId === 'closeParen') {
+          // Add parenthesis as a pseudo-condition
+          conditions.push({
+            entity: '',
+            attribute: '',
+            condition: connToken.connectorId === 'openParen' ? '(' : ')',
+            fullPath: ''
+          });
+          i++;
+          continue;
+        }
+      }
+
       if (t.type === 'dataElement') {
         const dataToken = t as DataElementToken;
         const { entity, attribute } = this.parseCompleteValue(dataToken.completeValue);
@@ -167,9 +183,13 @@ export class DroolsGeneratorService {
         let connector: string | undefined;
         if (i < tokens.length && tokens[i].type === 'connector') {
           const connToken = tokens[i] as ConnectorToken;
-          const connDef = config.logicalConnectors.find((c) => c.id === connToken.connectorId);
-          connector = connDef?.droolsText ?? connToken.displayText;
-          i++; // consume connector
+          // Only treat and/or as connectors here (not parentheses)
+          if (connToken.connectorId === 'and' || connToken.connectorId === 'or') {
+            const connDef = config.logicalConnectors.find((c) => c.id === connToken.connectorId);
+            connector = connDef?.droolsText ?? connToken.displayText;
+            i++; // consume connector
+          }
+          // Parentheses will be handled in the main loop as standalone items
         }
 
         conditions.push({ entity, attribute, condition: conditionStr, connector, fullPath: dataToken.completeValue });
@@ -205,31 +225,53 @@ export class DroolsGeneratorService {
   private formatDroolsOutput(conditions: DroolsCondition[]): string {
     if (conditions.length === 0) return '';
 
-    // Use the first condition's full path to determine the output entity
-    // E.g., "Deposits.Deposits Contract.Contract Identifier" -> "Deposits.Deposits Contract"
-    const firstParts = conditions[0].fullPath.split('.');
-    const outputEntity = firstParts.length >= 3 ? firstParts.slice(0, firstParts.length - 1).join('.') : conditions[0].entity;
+    // Find the first real condition (not a parenthesis) to determine output entity
+    const firstRealCondition = conditions.find(c => c.fullPath);
+    if (!firstRealCondition) return '';
     
-    // Within the group, join conditions based on whether attributes are the same
-    const condParts: string[] = [];
+    const firstParts = firstRealCondition.fullPath.split('.');
+    const outputEntity = firstParts.length >= 3 ? firstParts.slice(0, firstParts.length - 1).join('.') : firstRealCondition.entity;
+    
+    // Join conditions using their actual connectors (respecting and/or and parentheses)
+    let result = '';
     for (let i = 0; i < conditions.length; i++) {
-      condParts.push(conditions[i].condition);
-      // Add connector between conditions
-      if (i < conditions.length - 1) {
-        const currentAttr = conditions[i].attribute;
-        const nextAttr = conditions[i + 1].attribute;
-        
-        // If same attribute name, use comma; otherwise use &&
-        if (currentAttr === nextAttr) {
-          condParts.push(' , ');
-        } else {
-          condParts.push(' && ');
+      const cond = conditions[i];
+      const prevCond = i > 0 ? conditions[i - 1] : null;
+      const nextCond = i < conditions.length - 1 ? conditions[i + 1] : null;
+      
+      // Handle opening parenthesis
+      if (cond.condition === '(') {
+        // Add space before ( if there's content before it
+        if (result && !result.endsWith(' ')) {
+          result += ' ';
+        }
+        result += '(';
+        continue;
+      }
+      
+      // Handle closing parenthesis
+      if (cond.condition === ')') {
+        result += ')';
+        // Add connector after ) if exists
+        if (nextCond && cond.connector) {
+          result += ` ${cond.connector} `;
+        }
+        continue;
+      }
+      
+      // Add the condition
+      result += cond.condition;
+      
+      // Add connector after condition
+      if (nextCond) {
+        // Don't add connector if next is closing paren (it will be added by the closing paren logic)
+        if (nextCond.condition !== ')' && cond.connector) {
+          result += ` ${cond.connector} `;
         }
       }
     }
     
-    const conditionsStr = condParts.join('');
-    return `<${outputEntity}>:(${conditionsStr})`;
+    return `<${outputEntity}>:(${result})`;
   }
 
   private quoteIfString(val: string): string {

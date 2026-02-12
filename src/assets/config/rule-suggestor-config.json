@@ -144,6 +144,7 @@
     { "id": "is-null", "symbol": "is null", "displayLabel": "is null", "droolsOperator": "== null", "valueTypes": ["any"] },
     { "id": "is-not-null", "symbol": "is not null", "displayLabel": "is not null", "droolsOperator": "!= null", "valueTypes": ["any"] },
     { "id": "is-present", "symbol": "is present", "displayLabel": "is present", "droolsOperator": "!= null", "valueTypes": ["any"] },
+    { "id": "is-populated", "symbol": "is populated", "displayLabel": "is populated", "droolsOperator": "!= null", "valueTypes": ["any"] },
     { "id": "populated", "symbol": "populated", "displayLabel": "populated", "droolsOperator": "!= null", "valueTypes": ["any"] },
     { "id": "present", "symbol": "present", "displayLabel": "present", "droolsOperator": "!= null", "valueTypes": ["any"] },
     { "id": "is-null-or-blank", "symbol": "is null or blank", "displayLabel": "is null or blank", "droolsOperator": "nullOrEmpty", "valueTypes": ["any"] },

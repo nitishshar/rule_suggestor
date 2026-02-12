@@ -157,6 +157,22 @@
     <button type="button" class="warning-dismiss" (click)="clearWarning('deviation')">Dismiss</button>
   </div>
 
+  <div class="pattern-suggestions" *ngIf="patternSuggestions().length > 0">
+    <div class="suggestions-header">
+      <span class="suggestions-icon">💡</span>
+      <span class="suggestions-title">Suggested Patterns</span>
+    </div>
+    <div class="suggestions-list">
+      <div class="suggestion-item" *ngFor="let suggestion of patternSuggestions()">
+        <div class="suggestion-name">{{ suggestion.name }}</div>
+        <div class="suggestion-reason">{{ suggestion.reason }}</div>
+        <div class="suggestion-example">
+          <strong>Example:</strong> {{ suggestion.example }}
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="drools-section" *ngIf="generatedDrools()">
     <label class="label">Generated Drools (when part)</label>
     <textarea

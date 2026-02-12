@@ -55,6 +55,7 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   isAdvancedMode = signal(false);
   criteriaText = signal<{ [key: string]: string }>({});  // Store criteria section texts
   showCriteriaHelp = signal(false);
+  patternSuggestions = signal<Array<{ name: string; example: string; reason: string }>>([]);
   
   // Track dismissed warnings
   dismissedCompletenessWarning = signal(false);
@@ -579,6 +580,19 @@ Additional Criteria:
     const result = this.patternMatch.checkPattern(tok.tokens, cfg);
     if (!result.matched && result.deviationReason) {
       warnings.push(result.deviationReason);
+      
+      // Store pattern suggestions if available
+      if (result.suggestions && result.suggestions.length > 0) {
+        this.patternSuggestions.set(
+          result.suggestions.map(s => ({
+            name: s.pattern.name,
+            example: s.pattern.exampleText,
+            reason: s.reason
+          }))
+        );
+      }
+    } else {
+      this.patternSuggestions.set([]);
     }
 
     // Show combined warning if there are any issues
