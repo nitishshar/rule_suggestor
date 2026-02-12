@@ -55,6 +55,11 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   isAdvancedMode = signal(false);
   criteriaText = signal<{ [key: string]: string }>({});  // Store criteria section texts
   showCriteriaHelp = signal(false);
+  
+  // Track dismissed warnings
+  dismissedCompletenessWarning = signal(false);
+  dismissedBracketWarning = signal(false);
+  dismissedDeviationWarning = signal(false);
 
   tokenized = computed(() => {
     const cfg = this.config();
@@ -65,7 +70,8 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
 
   formattedTokens = computed(() => this.tokenized()?.tokens ?? []);
 
-  bracketWarning = computed(() => {
+  // Internal warning signals (always compute)
+  private _bracketWarningInternal = computed(() => {
     const raw = this.rawText();
     if (!raw.trim()) return null;
     
@@ -73,7 +79,7 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
     return result.valid ? null : result.message;
   });
 
-  completenessWarning = computed(() => {
+  private _completenessWarningInternal = computed(() => {
     const cfg = this.config();
     if (!cfg) return null;
     
@@ -107,6 +113,22 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
       const result = this.validateRuleCompleteness(tok.tokens, cfg);
       return result.valid ? null : result.message;
     }
+  });
+
+  // Public warning signals (respect dismissal)
+  bracketWarning = computed(() => {
+    if (this.dismissedBracketWarning()) return null;
+    return this._bracketWarningInternal();
+  });
+
+  completenessWarning = computed(() => {
+    if (this.dismissedCompletenessWarning()) return null;
+    return this._completenessWarningInternal();
+  });
+
+  // Track if there are any warnings (for red border highlight)
+  hasActiveWarnings = computed(() => {
+    return !!(this._bracketWarningInternal() || this._completenessWarningInternal() || this.deviationWarning());
   });
 
   formattedSavedRuleSections = computed(() => {
@@ -248,6 +270,10 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
     this.rawText.set(ta.value);
     this.cursorPosition.set(ta.selectionStart);
     this.updateSuggestions(ta.value, ta.selectionStart);
+    
+    // Reset dismissed warnings when user types
+    this.dismissedCompletenessWarning.set(false);
+    this.dismissedBracketWarning.set(false);
   }
 
   onFocus(): void {
@@ -538,21 +564,27 @@ Additional Criteria:
     const tok = this.tokenized();
     if (!cfg || !tok) return;
 
-    // Check if there are any real-time validation warnings
+    // Collect all warnings but allow saving
+    const warnings: string[] = [];
+    
     if (this.completenessWarning()) {
-      // Don't save if rule is incomplete
-      return;
+      warnings.push(this.completenessWarning()!);
     }
 
     if (this.bracketWarning()) {
-      // Don't save if brackets are unbalanced
-      return;
+      warnings.push(this.bracketWarning()!);
     }
 
     // Check pattern matching (only this creates the dismissible deviation warning)
     const result = this.patternMatch.checkPattern(tok.tokens, cfg);
     if (!result.matched && result.deviationReason) {
-      this.deviationWarning.set(result.deviationReason);
+      warnings.push(result.deviationReason);
+    }
+
+    // Show combined warning if there are any issues
+    if (warnings.length > 0) {
+      const warningMessage = '⚠ Rule saved but does not conform to all supported patterns. The generated Drools might not be correct. Issues: ' + warnings.join(' | ');
+      this.deviationWarning.set(warningMessage);
     } else {
       this.deviationWarning.set(null);
     }
@@ -741,8 +773,15 @@ Additional Criteria:
     return { valid: true };
   }
 
-  clearWarning(): void {
-    this.deviationWarning.set(null);
+  clearWarning(type: 'completeness' | 'bracket' | 'deviation'): void {
+    if (type === 'completeness') {
+      this.dismissedCompletenessWarning.set(true);
+    } else if (type === 'bracket') {
+      this.dismissedBracketWarning.set(true);
+    } else if (type === 'deviation') {
+      this.dismissedDeviationWarning.set(true);
+      this.deviationWarning.set(null);
+    }
   }
 
   trackBySuggestion(_i: number, item: SuggestionItem): string {

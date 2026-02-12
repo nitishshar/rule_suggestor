@@ -397,6 +397,16 @@
     border-color: var(--border-focus);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
+
+  &.has-warnings {
+    border-color: #dc2626;
+    border-width: 2px;
+    
+    &:focus {
+      border-color: #dc2626;
+      box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+    }
+  }
 }
 
 .formatted-preview {

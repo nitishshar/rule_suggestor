@@ -89,6 +89,7 @@
           #inputEl
           class="rule-input"
           [class.expanded]="isAdvancedMode()"
+          [class.has-warnings]="hasActiveWarnings()"
           [placeholder]="isAdvancedMode() ? 'Example:\nProduce Error If Contract Identifier in (ABC,DEF)\n\nApplicability Criteria:\n1. Balance is not null\n2. Account Number is not null\n\nTRIMS Specific Criteria:\n1. Transaction Amount greater than 100' : 'Start typing... e.g. Produce Error If'"
           [value]="rawText()"
           (input)="onInput($event)"
@@ -143,15 +144,17 @@
   <div class="warning-strip" *ngIf="completenessWarning()">
     <span class="warning-icon">⚠</span>
     <span>{{ completenessWarning() }}</span>
+    <button type="button" class="warning-dismiss" (click)="clearWarning('completeness')">Dismiss</button>
   </div>
   <div class="warning-strip" *ngIf="bracketWarning()">
     <span class="warning-icon">⚠</span>
     <span>{{ bracketWarning() }}</span>
+    <button type="button" class="warning-dismiss" (click)="clearWarning('bracket')">Dismiss</button>
   </div>
   <div class="warning-strip" *ngIf="deviationWarning()">
     <span class="warning-icon">⚠</span>
     <span>{{ deviationWarning() }}</span>
-    <button type="button" class="warning-dismiss" (click)="clearWarning()">Dismiss</button>
+    <button type="button" class="warning-dismiss" (click)="clearWarning('deviation')">Dismiss</button>
   </div>
 
   <div class="drools-section" *ngIf="generatedDrools()">
