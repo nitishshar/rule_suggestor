@@ -164,9 +164,12 @@ export class RuleTokenizerService {
 
   private matchPhrase(text: string, phrases: PhraseSuggestion[]): { phrase: PhraseSuggestion; len: number } | null {
     const t = text.trimStart();
+    const tLower = t.toLowerCase();
     for (const p of phrases) {
-      if (t.startsWith(p.insertText)) return { phrase: p, len: text.length - t.length + p.insertText.length };
-      if (t.startsWith(p.displayText)) return { phrase: p, len: text.length - t.length + p.displayText.length };
+      const insertTextLower = p.insertText.toLowerCase();
+      const displayTextLower = p.displayText.toLowerCase();
+      if (tLower.startsWith(insertTextLower)) return { phrase: p, len: text.length - t.length + p.insertText.length };
+      if (tLower.startsWith(displayTextLower)) return { phrase: p, len: text.length - t.length + p.displayText.length };
     }
     return null;
   }
