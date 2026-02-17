@@ -205,10 +205,23 @@ export class SuggestionService {
       // Check if we're typing something after a data element
       const beforeLastWord = trimmed.slice(0, trimmed.length - lastWord.length).trimEnd();
       if (this.endsWithDataElement(beforeLastWord, config.dataElements)) {
-        // We're typing after a data element, suggest operators filtered by lastWord
-        const operatorSuggestions = this.getOperatorSuggestions(config, lastWord);
-        if (operatorSuggestions.length > 0) {
-          return { items: operatorSuggestions, prefix: lastWord };
+        // Check if lastWord is actually part of a data element name
+        // If the full trimmed text ends with a known data element, then lastWord is part of it
+        const isLastWordPartOfDataElement = config.dataElements.some(de => {
+          const deWords = de.displayValue.toLowerCase().split(/\s+/);
+          return deWords.includes(lastWord.toLowerCase());
+        });
+        
+        if (!isLastWordPartOfDataElement) {
+          // We're typing an operator after a data element, suggest operators filtered by lastWord
+          const operatorSuggestions = this.getOperatorSuggestions(config, lastWord);
+          if (operatorSuggestions.length > 0) {
+            return { items: operatorSuggestions, prefix: lastWord };
+          }
+        } else {
+          // lastWord is part of the data element, don't replace it
+          // Just suggest operators without filtering
+          return { items: this.getOperatorSuggestions(config, ''), prefix: '' };
         }
       }
     }

@@ -174,7 +174,19 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
   });
 
   ngOnInit(): void {
-    this.configService.getConfig().subscribe((c) => this.config.set(c));
+    this.configService.getConfig().subscribe((cfg) => {
+      this.config.set(cfg);
+      
+      // Initialize advanced mode from config if not overridden by localStorage
+      const savedAdvancedMode = localStorage.getItem('rule-editor-advanced-mode');
+      if (savedAdvancedMode !== null) {
+        // Use localStorage if it exists (user preference)
+        this.isAdvancedMode.set(savedAdvancedMode === 'true');
+      } else if (cfg.advancedMode?.enabled !== undefined) {
+        // Otherwise use config default
+        this.isAdvancedMode.set(cfg.advancedMode.enabled);
+      }
+    });
     
     // Load saved theme preference
     const savedTheme = localStorage.getItem('theme');
@@ -184,12 +196,6 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
     } else {
       this.isDarkTheme.set(true);
       document.documentElement.removeAttribute('data-theme');
-    }
-
-    // Load advanced mode from localStorage
-    const savedAdvancedMode = localStorage.getItem('rule-editor-advanced-mode');
-    if (savedAdvancedMode === 'true') {
-      this.isAdvancedMode.set(true);
     }
   }
 
@@ -432,6 +438,14 @@ export class RuleEditorComponent implements OnInit, AfterViewInit {
       ta.selectionStart = ta.selectionEnd = newBefore.length;
       this.cursorPosition.set(newBefore.length);
     } else {
+      // Add space before operator if needed (when no prefix and no trailing space)
+      if (item.kind === 'operator' && before.length > 0) {
+        const lastChar = before.charAt(before.length - 1);
+        if (lastChar !== ' ' && lastChar !== '\n') {
+          insert = ' ' + insert;
+        }
+      }
+      
       const newBefore = before + insert;
       const newText = newBefore + after;
       this.rawText.set(newText);

@@ -1,0 +1,238 @@
+<div class="sidebyside-editor-wrapper" *ngIf="config() as cfg">
+  <!-- Header -->
+  <div class="editor-header">
+    <h2 class="editor-title">Business Rule Expression - Side by Side</h2>
+    <div class="header-actions">
+      <button 
+        type="button" 
+        class="btn-primary" 
+        (click)="saveRule()"
+        title="Generate Drools & Save"
+      >
+        💾 Generate & Save
+      </button>
+      <label class="theme-toggle" title="Toggle theme">
+        <input type="checkbox" [checked]="isDarkTheme()" (change)="toggleDarkTheme()" />
+        <span class="toggle-slider"></span>
+        <span class="toggle-icon">{{ isDarkTheme() ? '🌙' : '☀️' }}</span>
+      </label>
+      <label class="advanced-toggle" title="Toggle advanced multi-criteria mode">
+        <input type="checkbox" [checked]="isAdvancedMode()" (change)="toggleAdvancedMode()" />
+        <span class="toggle-label">Advanced Mode</span>
+      </label>
+      <button type="button" class="btn-icon" (click)="showDroolsHelp.set(!showDroolsHelp())" title="Drools Examples & Help">
+        <span class="icon-help">❓</span>
+      </button>
+      <button type="button" class="btn-icon btn-clear" (click)="clearAll()" title="Clear All">
+        <span class="icon-clear">🗑️</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Drools Help Panel (Full Width) -->
+  <div class="drools-help-panel" *ngIf="showDroolsHelp()">
+    <div class="help-header">
+      <h3>Drools Expression Examples</h3>
+      <button type="button" class="btn-close" (click)="showDroolsHelp.set(false)">✕</button>
+    </div>
+    <div class="examples-grid">
+      <div class="example-card" *ngFor="let example of droolsExamples" (click)="useExample(example)">
+        <div class="example-title">{{ example.title }}</div>
+        <div class="example-description">{{ example.description }}</div>
+        <div class="example-logical">
+          <strong>Logical Rule:</strong>
+          <code>{{ example.logicalRule }}</code>
+        </div>
+        <div class="example-drools">
+          <strong>Drools Expression:</strong>
+          <code>{{ example.droolsExpression }}</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Side-by-Side Layout -->
+  <div class="sidebyside-container">
+    <!-- Left Panel: Logical Rule Statement -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <label class="panel-label">Logical Rule Statement</label>
+        <div class="panel-actions">
+          <button 
+            type="button" 
+            class="btn-icon-small" 
+            (click)="showLogicalRuleExamples.set(!showLogicalRuleExamples())"
+            title="Show Examples"
+          >
+            <span class="icon-examples">📋</span>
+          </button>
+          <button 
+            type="button" 
+            class="btn-icon-small" 
+            (click)="showLogicalRuleHelp.set(!showLogicalRuleHelp())"
+            title="Show Help"
+          >
+            <span class="icon-info">ℹ️</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Logical Rule Examples Dropdown -->
+      <div class="help-dropdown" *ngIf="showLogicalRuleExamples()">
+        <div class="help-dropdown-header">
+          <strong>Examples - Click to Use</strong>
+          <button type="button" class="btn-close-small" (click)="showLogicalRuleExamples.set(false)">✕</button>
+        </div>
+        <div class="example-list">
+          <div 
+            class="example-item" 
+            *ngFor="let example of logicalRuleExamples"
+            (click)="useLogicalRuleExample(example)"
+          >
+            {{ example }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Logical Rule Help Dropdown -->
+      <div class="help-dropdown help-panel" *ngIf="showLogicalRuleHelp()">
+        <div class="help-dropdown-header">
+          <strong>✨ How to write rules:</strong>
+          <button type="button" class="btn-close-small" (click)="showLogicalRuleHelp.set(false)">✕</button>
+        </div>
+        <div class="help-content">
+          <ol class="help-steps">
+            <li>Start with your main rule: <code>Produce Error If Contract Identifier in (ABC,DEF)</code></li>
+            <li>Leave a blank line, then add section header: <code>Applicability Criteria:</code></li>
+            <li>Type numbered conditions: <code>1. Balance is not null</code></li>
+            <li>Press <kbd>Enter</kbd> to auto-number next line: <code>2. </code></li>
+            <li>Add more sections: <code>TRIMS Specific Criteria:</code></li>
+            <li>Continue with numbered conditions</li>
+          </ol>
+          <p class="example-note"><strong>Important:</strong> Section headers must end with "Criteria:" or "criteria:" and be on their own line!</p>
+          <p class="autocomplete-note">💡 <strong>Autocomplete works throughout</strong> - just start typing data element names!</p>
+        </div>
+      </div>
+
+      <div class="input-container">
+        <textarea
+          #logicalRuleInput
+          class="logical-rule-input"
+          [class.has-warnings]="hasActiveWarnings()"
+          placeholder="Start typing... e.g., Produce Error If Contract Identifier is null"
+          [value]="logicalRuleText()"
+          (input)="onLogicalRuleInput($event)"
+          (keyup)="onLogicalRuleKeyUp($event)"
+          (keydown)="onLogicalRuleKeyDown($event)"
+          (focus)="onLogicalRuleFocus()"
+          (blur)="onLogicalRuleBlur()"
+          rows="15"
+        ></textarea>
+        
+        <!-- Token preview below input -->
+        <div class="inline-token-preview" *ngIf="logicalRuleText().trim() && formattedTokens().length > 0">
+          <span class="preview-label">Preview:</span>
+          <app-rule-editor-formatter [tokens]="formattedTokens()" />
+        </div>
+
+        <!-- Warning Messages -->
+        <div class="warning-strip completeness-warning" *ngIf="completenessWarning()">
+          <span class="warning-icon">⚠️</span>
+          <span class="warning-message">{{ completenessWarning() }}</span>
+          <button type="button" class="btn-dismiss" (click)="clearWarning('completeness')" title="Dismiss">✕</button>
+        </div>
+
+        <div class="warning-strip bracket-warning" *ngIf="bracketWarning()">
+          <span class="warning-icon">⚠️</span>
+          <span class="warning-message">{{ bracketWarning() }}</span>
+          <button type="button" class="btn-dismiss" (click)="clearWarning('bracket')" title="Dismiss">✕</button>
+        </div>
+
+        <div class="warning-strip deviation-warning" *ngIf="deviationWarning()">
+          <span class="warning-icon">⚠️</span>
+          <span class="warning-message">{{ deviationWarning() }}</span>
+          <button type="button" class="btn-dismiss" (click)="clearWarning('deviation')" title="Dismiss">✕</button>
+        </div>
+
+        <!-- Pattern Suggestions -->
+        <div class="pattern-suggestions" *ngIf="patternSuggestions().length > 0">
+          <div class="suggestions-header">
+            <span class="suggestions-icon">💡</span>
+            <span class="suggestions-title">Suggested Patterns</span>
+          </div>
+          <div class="suggestions-list">
+            <div class="suggestion-item" *ngFor="let suggestion of patternSuggestions()">
+              <div class="suggestion-name">{{ suggestion.name }}</div>
+              <div class="suggestion-reason">{{ suggestion.reason }}</div>
+              <div class="suggestion-example">
+                <strong>Example:</strong> {{ suggestion.example }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Autocomplete Suggestions -->
+        <div class="suggestion-dropdown" *ngIf="showSuggestions() && suggestions().length">
+          <ul class="suggestion-list">
+            <li
+              *ngFor="let item of suggestions(); trackBy: trackBySuggestion; let i = index"
+              class="suggestion-item"
+              [class.selected]="i === selectedIndex()"
+              (mousedown)="$event.preventDefault(); selectSuggestion(item)"
+            >
+              <span class="suggestion-kind" [attr.data-kind]="item.kind">{{ item.kind }}</span>
+              <span class="suggestion-text">{{ item.displayText }}</span>
+              <span class="suggestion-desc" *ngIf="item.description">{{ item.description }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: DROOLS Rule Expression -->
+    <div class="right-panel">
+      <div class="panel-header">
+        <label class="panel-label">DROOLS Rule Expression</label>
+        <div class="panel-actions">
+          <button 
+            type="button" 
+            class="btn-icon-small" 
+            (click)="copyDroolsToClipboard()"
+            title="Copy to Clipboard"
+            [disabled]="!droolsExpressionText()"
+          >
+            <span class="icon-copy">📋</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="input-container">
+        <textarea
+          #droolsExpressionInput
+          class="drools-expression-input"
+          placeholder="Focus here to auto-generate Drools from your logical rule, or type manually..."
+          [value]="droolsExpressionText()"
+          (input)="onDroolsExpressionInput($event)"
+          (focus)="onDroolsExpressionFocus()"
+          rows="15"
+        ></textarea>
+      </div>
+
+      <div class="drools-hint" *ngIf="!droolsExpressionText() && logicalRuleText()">
+        💡 Focus the Drools field above to auto-generate, or type manually
+      </div>
+    </div>
+  </div>
+
+  <!-- Formatted Token Display (moved to left panel area) -->
+  <div class="formatted-token-section" *ngIf="logicalRuleText().trim() && formattedTokens().length > 0">
+    <div class="token-header">
+      <span class="token-title">📝 Parsed Tokens:</span>
+    </div>
+    <div class="token-display">
+      <app-rule-editor-formatter [tokens]="formattedTokens()" />
+    </div>
+  </div>
+</div>
+
+<p class="loading" *ngIf="!config()">Loading configuration…</p>
