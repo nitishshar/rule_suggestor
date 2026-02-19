@@ -100,8 +100,9 @@
   position: absolute;
   top: 40px;
   right: 0;
-  width: 800px;
-  max-height: 600px;
+  left: 0;
+  width: auto;
+  max-width: 100%;
   background: var(--surface-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -122,12 +123,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  flex-shrink: 0;
 
   strong {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-primary);
   }
   
@@ -142,13 +144,14 @@
 }
 
 .btn-close {
-  padding: 4px 8px;
+  padding: 2px 6px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.15s;
+  flex-shrink: 0;
   
   &:hover {
     color: var(--text-primary);
@@ -156,16 +159,38 @@
 }
 
 .examples-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  padding: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
   overflow-y: auto;
-  max-height: 540px;
+  overflow-x: hidden;
+  max-height: 400px;
+  
+  // Show thin scrollbar
+  scrollbar-width: thin; /* Show thin scrollbar in Firefox */
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: var(--surface);
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+    
+    &:hover {
+      background: var(--text-secondary);
+    }
+  }
 }
 
 .example-card {
-  padding: 16px;
+  flex: 0 0 calc(50% - 6px);
+  padding: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -192,14 +217,14 @@
 }
 
 .example-header {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .example-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--accent);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   
   [data-theme="light"] & {
     color: #3b82f6;
@@ -207,7 +232,7 @@
 }
 
 .example-description {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   
   [data-theme="light"] & {
@@ -216,16 +241,16 @@
 }
 
 .example-section {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .section-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   
   [data-theme="light"] & {
     color: #6b7280;
@@ -234,13 +259,14 @@
 
 .section-content {
   font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 8px;
+  font-size: 11px;
+  padding: 6px 8px;
   border-radius: 4px;
   
   &.logical {
     background: rgba(59, 130, 246, 0.1);
     color: var(--text-primary);
+    line-height: 1.4;
     
     [data-theme="light"] & {
       background: rgba(59, 130, 246, 0.05);
@@ -253,8 +279,17 @@
     color: var(--text-secondary);
     margin: 0;
     overflow-x: auto;
-    white-space: pre;
+    white-space: pre-wrap;
+    word-break: break-all;
     line-height: 1.4;
+    
+    // Hide scrollbar
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
     
     [data-theme="light"] & {
       background: #f9fafb;

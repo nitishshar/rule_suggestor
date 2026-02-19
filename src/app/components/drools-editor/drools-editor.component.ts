@@ -61,37 +61,37 @@ export class DroolsEditorComponent implements OnInit, ControlValueAccessor {
       title: 'Existence - Attribute Population',
       description: 'Check if required attributes are populated',
       logicalRule: 'Produce Error If Contract Identifier is null or empty',
-      droolsExpression: '<Deposits.Deposits Contract>:(Contract Identifier == null || Contract Identifier == "")'
+      droolsExpression: '<Deposits.Deposits Contract>:(<Contract Identifier> == null || <Contract Identifier> == "")'
     },
     {
       title: 'Comparison - Data Element Comparison',
       description: 'Compare values between two data elements',
       logicalRule: 'Produce Error If Balance greater than Transaction Amount',
-      droolsExpression: '<Deposits.Deposits Account>:(Balance > Transaction Amount)'
+      droolsExpression: '<Deposits.Deposits Account>:(<Balance> > <Transaction Amount>)'
     },
     {
       title: 'Natural Language - Using "is"',
       description: 'Natural language equality check',
       logicalRule: 'Produce Error If Balance is 0',
-      droolsExpression: '<Deposits.Deposits Account>:(Balance == 0)'
+      droolsExpression: '<Deposits.Deposits Account>:(<Balance> == 0)'
     },
     {
       title: 'Domain Values - Using "in"',
       description: 'Validate values against predefined list',
       logicalRule: 'Produce Error If life cycle status code not in [ACTIVE,CLOSED,PENDING]',
-      droolsExpression: '<Deposits.Deposits>:(life cycle status code not in (\'ACTIVE\', \'CLOSED\', \'PENDING\'))'
+      droolsExpression: '<Deposits.Deposits>:(<life cycle status code> not in (\'ACTIVE\', \'CLOSED\', \'PENDING\'))'
     },
     {
       title: 'Grouped Conditions - Using Parentheses',
       description: 'Complex conditions with logical grouping',
       logicalRule: 'Produce Error If Balance is 0 and (Status is ACTIVE or Status is PENDING)',
-      droolsExpression: '<Deposits.Deposits Account>:(Balance == 0 && (Status == "ACTIVE" || Status == "PENDING"))'
+      droolsExpression: '<Deposits.Deposits Account>:(<Balance> == 0 && (<Status> == "ACTIVE" || <Status> == "PENDING"))'
     },
     {
       title: 'Populated Check',
       description: 'Check if field has a value (is not null)',
       logicalRule: 'Produce Error If Contract Identifier is populated',
-      droolsExpression: '<Deposits.Deposits Contract>:(Contract Identifier != null)'
+      droolsExpression: '<Deposits.Deposits Contract>:(<Contract Identifier> != null)'
     }
   ];
 
