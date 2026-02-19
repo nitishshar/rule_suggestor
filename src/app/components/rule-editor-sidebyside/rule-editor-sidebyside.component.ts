@@ -371,10 +371,46 @@ export class RuleEditorSidebysideComponent implements OnInit, AfterViewInit {
 
   generateDrools() {
     const cfg = this.config();
-    const tok = this.tokenized();
-    if (!cfg || !tok) return;
+    const rawText = this.logicalRuleText();
+    if (!cfg || !rawText) return;
 
-    const whenClause = this.droolsGenerator.generateWhenClause(tok.tokens, cfg);
+    // Check if this is a multi-criteria rule (contains "criteria:" sections)
+    const isMultiCriteria = /criteria:/i.test(rawText);
+    
+    let whenClause: string;
+    
+    if (isMultiCriteria) {
+      // Parse as multi-criteria rule
+      const parsed = this.multiCriteriaParser.parseCompleteRule(rawText, cfg);
+      
+      // Convert parsed criteria sections to the format expected by generator
+      const criterias = parsed.criteriaSections.map((section, idx) => ({
+        sectionId: `section_${idx + 1}`,
+        sectionTitle: section.sectionTitle,
+        conditions: section.conditions.map((cond, condIdx) => ({
+          number: condIdx + 1,
+          text: cond
+        }))
+      }));
+      
+      // Extract tokens for each criteria condition
+      const criteriaTokens = parsed.criteriaSections.map(section => section.tokens);
+      
+      // Generate multi-criteria Drools
+      whenClause = this.droolsGenerator.generateMultiCriteriaWhenClause(
+        1, // rule number
+        parsed.mainTokens,
+        criterias,
+        cfg,
+        criteriaTokens // Pass the tokens
+      );
+    } else {
+      // Simple single-line rule
+      const tok = this.tokenized();
+      if (!tok) return;
+      whenClause = this.droolsGenerator.generateWhenClause(tok.tokens, cfg);
+    }
+
     this.droolsExpressionText.set(whenClause);
   }
 

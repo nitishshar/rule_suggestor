@@ -2,11 +2,12 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RuleEditorComponent } from './components/rule-editor/rule-editor.component';
 import { RuleEditorSidebysideComponent } from './components/rule-editor-sidebyside/rule-editor-sidebyside.component';
+import { SideBySideContainerComponent } from './components/side-by-side-container/side-by-side-container.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RuleEditorComponent, RuleEditorSidebysideComponent],
+  imports: [CommonModule, RuleEditorComponent, RuleEditorSidebysideComponent, SideBySideContainerComponent],
   template: `
     <header class="app-header">
       <div class="header-content">
@@ -31,12 +32,25 @@ import { RuleEditorSidebysideComponent } from './components/rule-editor-sidebysi
           >
             Side by Side
           </button>
+          <button 
+            type="button"
+            class="nav-link" 
+            [class.active]="currentView() === 'reusable'"
+            (click)="switchView('reusable')"
+          >
+            Reusable ✨
+          </button>
         </nav>
       </div>
     </header>
     <main class="app-main">
       <app-rule-editor *ngIf="currentView() === 'classic'" />
       <app-rule-editor-sidebyside *ngIf="currentView() === 'sidebyside'" />
+      <app-side-by-side-container 
+        *ngIf="currentView() === 'reusable'"
+        title="Reusable Components - Side by Side"
+        (saved)="onSave($event)"
+      />
     </main>
   `,
   styles: [`
@@ -124,9 +138,15 @@ import { RuleEditorSidebysideComponent } from './components/rule-editor-sidebysi
   `],
 })
 export class AppComponent {
-  currentView = signal<'classic' | 'sidebyside'>('classic');
+  currentView = signal<'classic' | 'sidebyside' | 'reusable'>('classic');
 
-  switchView(view: 'classic' | 'sidebyside') {
+  switchView(view: 'classic' | 'sidebyside' | 'reusable') {
     this.currentView.set(view);
+  }
+
+  onSave(data: { logicalRule: string; drools: string }) {
+    console.log('Rule saved:', data);
+    // You can add your save logic here
+    // For example: save to backend API
   }
 }

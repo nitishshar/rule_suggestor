@@ -55,7 +55,7 @@ export class DroolsGeneratorService {
         let conditionStr = '';
         
         if (!opToken) {
-          conditionStr = `${attribute} != null`;
+          conditionStr = `${this.wrapAttribute(attribute)} != null`;
         } else {
           const opDef = config.operators.find((o) => o.id === opToken.operatorId);
           const droolsOp = opDef?.droolsOperator ?? opToken.symbol;
@@ -68,17 +68,17 @@ export class DroolsGeneratorService {
 
           // Operators that don't need a value
           if (droolsOp === '== null') {
-            conditionStr = `${attribute} == null`;
+            conditionStr = `${this.wrapAttribute(attribute)} == null`;
           } else if (droolsOp === '!= null') {
-            conditionStr = `${attribute} != null`;
+            conditionStr = `${this.wrapAttribute(attribute)} != null`;
           } else if (droolsOp === 'empty') {
-            conditionStr = `${attribute} == ""`;
+            conditionStr = `${this.wrapAttribute(attribute)} == ""`;
           } else if (droolsOp === 'not empty') {
-            conditionStr = `${attribute} != ""`;
+            conditionStr = `${this.wrapAttribute(attribute)} != ""`;
           } else if (droolsOp === 'nullOrEmpty') {
-            conditionStr = `(${attribute} == null || ${attribute} == "")`;
+            conditionStr = `(${this.wrapAttribute(attribute)} == null || ${this.wrapAttribute(attribute)} == "")`;
           } else if (droolsOp === 'notNullOrEmpty') {
-            conditionStr = `(${attribute} != null && ${attribute} != "")`;
+            conditionStr = `(${this.wrapAttribute(attribute)} != null && ${this.wrapAttribute(attribute)} != "")`;
           } else if (droolsOp === 'in' || droolsOp === 'not in') {
             // Special handling for "in" and "not in" - collect everything including ( ) or [ ] and ,
             const listValues: string[] = [];
@@ -126,9 +126,9 @@ export class DroolsGeneratorService {
             
             if (foundOpenBracket && listValues.length > 0) {
               const listStr = `(${listValues.join(', ')})`;
-              conditionStr = `${attribute} ${droolsOp} ${listStr}`;
+              conditionStr = `${this.wrapAttribute(attribute)} ${droolsOp} ${listStr}`;
             } else {
-              conditionStr = `${attribute} ${droolsOp}`;
+              conditionStr = `${this.wrapAttribute(attribute)} ${droolsOp}`;
             }
           } else {
             // Operators that need a value (equals, >, <, etc.)
@@ -158,18 +158,18 @@ export class DroolsGeneratorService {
             }
 
             if (isDataElementComparison) {
-              // Data element comparison - don't quote the value
-              conditionStr = `${attribute} ${droolsOp} ${comparisonAttribute}`;
+              // Data element comparison - wrap both attributes
+              conditionStr = `${this.wrapAttribute(attribute)} ${droolsOp} ${this.wrapAttribute(comparisonAttribute)}`;
             } else if (!valueStr) {
-              conditionStr = `${attribute} ${droolsOp}`;
+              conditionStr = `${this.wrapAttribute(attribute)} ${droolsOp}`;
             } else {
               const quotedValue = this.quoteIfString(valueStr);
               if (droolsOp === 'length >') {
-                conditionStr = `${attribute} != null && ${attribute}.length() > ${quotedValue}`;
+                conditionStr = `${this.wrapAttribute(attribute)} != null && ${this.wrapAttribute(attribute)}.length() > ${quotedValue}`;
               } else if (droolsOp === 'length <') {
-                conditionStr = `${attribute} != null && ${attribute}.length() < ${quotedValue}`;
+                conditionStr = `${this.wrapAttribute(attribute)} != null && ${this.wrapAttribute(attribute)}.length() < ${quotedValue}`;
               } else {
-                conditionStr = `${attribute} ${droolsOp} ${quotedValue}`;
+                conditionStr = `${this.wrapAttribute(attribute)} ${droolsOp} ${quotedValue}`;
               }
             }
           }
@@ -201,6 +201,13 @@ export class DroolsGeneratorService {
 
     // Group conditions by entity and preserve connectors
     return this.formatDroolsOutput(conditions);
+  }
+
+  /**
+   * Wraps an attribute name in angle brackets for Drools syntax
+   */
+  private wrapAttribute(attribute: string): string {
+    return `<${attribute}>`;
   }
 
   private parseCompleteValue(completeValue: string): { entity: string; attribute: string } {
@@ -252,9 +259,15 @@ export class DroolsGeneratorService {
       // Handle closing parenthesis
       if (cond.condition === ')') {
         result += ')';
-        // Add connector after ) if exists
-        if (nextCond && cond.connector) {
-          result += ` ${cond.connector} `;
+        // Look for connector in previous real condition (not parenthesis)
+        // to add after the closing paren
+        for (let j = i - 1; j >= 0; j--) {
+          if (conditions[j].condition !== '(' && conditions[j].condition !== ')') {
+            if (conditions[j].connector && nextCond) {
+              result += ` ${conditions[j].connector} `;
+            }
+            break;
+          }
         }
         continue;
       }
@@ -264,7 +277,8 @@ export class DroolsGeneratorService {
       
       // Add connector after condition
       if (nextCond) {
-        // Don't add connector if next is closing paren (it will be added by the closing paren logic)
+        // Don't add connector if next is closing paren
+        // (it will be handled by the closing paren logic)
         if (nextCond.condition !== ')' && cond.connector) {
           result += ` ${cond.connector} `;
         }
@@ -296,19 +310,16 @@ export class DroolsGeneratorService {
 
   /**
    * Generate comprehensive Drools output for multi-criteria rules
-   * Includes main rule statement and all criteria sections
+   * Includes main rule statement and all criteria sections with tokens
    */
   generateMultiCriteriaWhenClause(
     ruleNumber: number,
     mainTokens: RuleToken[],
     criterias: RuleCriteria[],
-    config: RuleSuggestorConfig
+    config: RuleSuggestorConfig,
+    criteriaTokens?: RuleToken[][][] // Optional: tokens for each criteria condition
   ): string {
     const lines: string[] = [];
-    
-    // Add rule number header
-    lines.push(`// Rule #${ruleNumber}`);
-    lines.push('');
     
     // Generate main rule when clause
     const mainWhen = this.generateWhenClause(mainTokens, config);
@@ -318,13 +329,30 @@ export class DroolsGeneratorService {
       lines.push('');
     }
     
-    // Add criteria sections
-    for (const criteria of criterias) {
+    // Add criteria sections with proper Drools formatting
+    for (let i = 0; i < criterias.length; i++) {
+      const criteria = criterias[i];
       if (criteria.conditions.length > 0) {
         lines.push(`// ${criteria.sectionTitle}`);
-        criteria.conditions.forEach((cond) => {
-          lines.push(`//   ${cond.number}. ${cond.text}`);
-        });
+        
+        for (let j = 0; j < criteria.conditions.length; j++) {
+          const cond = criteria.conditions[j];
+          
+          // Try to generate Drools from tokens if available
+          if (criteriaTokens && criteriaTokens[i] && criteriaTokens[i][j]) {
+            const tokens = criteriaTokens[i][j];
+            const droolsCondition = this.generateWhenClause(tokens, config);
+            if (droolsCondition) {
+              lines.push(droolsCondition);
+            } else {
+              // Fallback to plain text if generation fails
+              lines.push(cond.text);
+            }
+          } else {
+            // No tokens available, use plain text
+            lines.push(cond.text);
+          }
+        }
         lines.push('');
       }
     }

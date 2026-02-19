@@ -1,0 +1,128 @@
+<div class="generic-rule-editor" [class.disabled]="disabled">
+  <!-- Header with actions -->
+  <div class="editor-header" *ngIf="showExamples || showHelp">
+    <div class="header-actions">
+      <button 
+        *ngIf="showExamples"
+        type="button" 
+        class="btn-icon-sm" 
+        (click)="showExamplesPanel.set(!showExamplesPanel())"
+        title="Show Examples"
+        [disabled]="disabled"
+      >
+        📋
+      </button>
+      <button 
+        *ngIf="showHelp"
+        type="button" 
+        class="btn-icon-sm" 
+        (click)="showHelpPanel.set(!showHelpPanel())"
+        title="Show Help"
+        [disabled]="disabled"
+      >
+        ℹ️
+      </button>
+    </div>
+  </div>
+
+  <!-- Examples Panel -->
+  <div class="dropdown-panel examples-panel" *ngIf="showExamplesPanel()">
+    <div class="panel-header">
+      <strong>Examples - Click to Use</strong>
+      <button type="button" class="btn-close" (click)="showExamplesPanel.set(false)">✕</button>
+    </div>
+    <div class="examples-list">
+      <div 
+        class="example-item" 
+        *ngFor="let example of examples"
+        (click)="useExample(example)"
+      >
+        {{ example }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Panel -->
+  <div class="dropdown-panel help-panel" *ngIf="showHelpPanel()">
+    <div class="panel-header">
+      <strong>✨ How to write rules</strong>
+      <button type="button" class="btn-close" (click)="showHelpPanel.set(false)">✕</button>
+    </div>
+    <div class="help-content">
+      <ol class="help-steps">
+        <li>Start with your main rule: <code>Produce Error If Contract Identifier in (ABC,DEF)</code></li>
+        <li>Leave a blank line, then add section header: <code>Applicability Criteria:</code></li>
+        <li>Type numbered conditions: <code>1. Balance is not null</code></li>
+        <li>Press <kbd>Enter</kbd> to auto-number next line: <code>2. </code></li>
+        <li>Add more sections: <code>TRIMS Specific Criteria:</code></li>
+        <li>Continue with numbered conditions</li>
+      </ol>
+      <p class="note-box">
+        <strong>Important:</strong> Section headers must end with "Criteria:" or "criteria:" and be on their own line!
+      </p>
+      <p class="note-box success">
+        💡 <strong>Autocomplete works throughout</strong> - just start typing data element names!
+      </p>
+    </div>
+  </div>
+
+  <!-- Main Input Container -->
+  <div class="input-container">
+    <textarea
+      #textarea
+      class="rule-textarea"
+      [class.has-warnings]="hasActiveWarnings()"
+      [attr.placeholder]="placeholder"
+      [value]="ruleText()"
+      [disabled]="disabled"
+      [style.minHeight]="minHeight"
+      (input)="onInput($event)"
+      (keydown)="onKeyDown($event)"
+      (focus)="onFocus()"
+      (blur)="onBlur()"
+    ></textarea>
+
+    <!-- Token Preview -->
+    <div class="token-preview" *ngIf="showTokenPreview && ruleText().trim() && formattedTokens().length > 0">
+      <span class="preview-label">Preview:</span>
+      <app-rule-editor-formatter [tokens]="formattedTokens()" />
+    </div>
+
+    <!-- Warnings -->
+    <div class="warning-messages" *ngIf="showWarnings">
+      <div class="warning-strip" *ngIf="completenessWarning()">
+        <span class="warning-icon">⚠️</span>
+        <span class="warning-text">{{ completenessWarning() }}</span>
+        <button type="button" class="btn-dismiss" (click)="clearWarning('completeness')">✕</button>
+      </div>
+
+      <div class="warning-strip" *ngIf="bracketWarning()">
+        <span class="warning-icon">⚠️</span>
+        <span class="warning-text">{{ bracketWarning() }}</span>
+        <button type="button" class="btn-dismiss" (click)="clearWarning('bracket')">✕</button>
+      </div>
+
+      <div class="warning-strip" *ngIf="deviationWarning()">
+        <span class="warning-icon">⚠️</span>
+        <span class="warning-text">{{ deviationWarning() }}</span>
+        <button type="button" class="btn-dismiss" (click)="clearWarning('deviation')">✕</button>
+      </div>
+    </div>
+
+    <!-- Autocomplete Suggestions -->
+    <div class="suggestions-dropdown" *ngIf="showSuggestions()">
+      <ul #suggestionList class="suggestions-list">
+        <li
+          *ngFor="let item of suggestions(); trackBy: trackBySuggestion; let i = index"
+          class="suggestion-item"
+          [class.selected]="i === selectedIndex()"
+          (mousedown)="$event.preventDefault(); selectSuggestion(item)"
+        >
+          <span class="suggestion-kind" [attr.data-kind]="item.kind">{{ item.kind }}</span>
+          <span class="suggestion-text">{{ item.displayText }}</span>
+          <span class="suggestion-desc" *ngIf="item.description">{{ item.description }}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

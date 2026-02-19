@@ -1,0 +1,90 @@
+<div class="drools-editor" [class.disabled]="disabled" [class.readonly]="readonly">
+  <!-- Header -->
+  <div class="editor-header">
+    <label class="editor-label">{{ label }}</label>
+    <div class="header-actions">
+      <button 
+        *ngIf="showExamples"
+        type="button" 
+        class="btn-icon-sm" 
+        (click)="showExamplesPanel.set(!showExamplesPanel())"
+        title="Show Drools Examples"
+        [disabled]="disabled"
+      >
+        ℹ️
+      </button>
+      <button 
+        *ngIf="showCopyButton && droolsText()"
+        type="button" 
+        class="btn-action" 
+        (click)="copyToClipboard()"
+        [disabled]="disabled"
+        title="Copy to Clipboard"
+      >
+        <span *ngIf="!copySuccess()">📋 Copy</span>
+        <span *ngIf="copySuccess()">✓ Copied!</span>
+      </button>
+      <button 
+        *ngIf="!readonly && !autoGenerate"
+        type="button" 
+        class="btn-action primary" 
+        (click)="requestGenerate()"
+        [disabled]="disabled"
+        title="Generate Drools"
+      >
+        ⚡ Generate
+      </button>
+    </div>
+  </div>
+
+  <!-- Examples Panel -->
+  <div class="dropdown-panel examples-panel" *ngIf="showExamplesPanel()">
+    <div class="panel-header">
+      <strong>📚 Drools Expression Examples</strong>
+      <button type="button" class="btn-close" (click)="showExamplesPanel.set(false)">✕</button>
+    </div>
+    <div class="examples-grid">
+      <div 
+        class="example-card" 
+        *ngFor="let example of droolsExamples"
+        (click)="useExample(example)"
+      >
+        <div class="example-header">
+          <div class="example-title">{{ example.title }}</div>
+          <div class="example-description">{{ example.description }}</div>
+        </div>
+        <div class="example-section">
+          <div class="section-label">Logical Rule:</div>
+          <div class="section-content logical">{{ example.logicalRule }}</div>
+        </div>
+        <div class="example-section">
+          <div class="section-label">Drools Expression:</div>
+          <pre class="section-content drools">{{ example.droolsExpression }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Textarea -->
+  <div class="textarea-container">
+    <textarea
+      #textarea
+      class="drools-textarea"
+      [attr.placeholder]="placeholder"
+      [value]="droolsText()"
+      [disabled]="disabled"
+      [readonly]="readonly"
+      [style.minHeight]="minHeight"
+      (input)="onInput($event)"
+      (focus)="onFocus()"
+      (blur)="onBlur()"
+    ></textarea>
+  </div>
+
+  <!-- Hint -->
+  <div class="hint-text" *ngIf="showHint && !droolsText().trim()">
+    <span *ngIf="autoGenerate">💡 Focus here to auto-generate from logical rule, or type manually</span>
+    <span *ngIf="!autoGenerate && !readonly">💡 Click "Generate" to create Drools from logical rule</span>
+    <span *ngIf="readonly">📖 Generated Drools expression will appear here</span>
+  </div>
+</div>

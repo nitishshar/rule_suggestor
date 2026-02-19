@@ -1,0 +1,334 @@
+.drools-editor {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+  
+  &.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  &.readonly .drools-textarea {
+    background: var(--surface);
+    cursor: default;
+  }
+}
+
+// Header
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.editor-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  
+  [data-theme="light"] & {
+    color: #374151;
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-icon-sm {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-elevated);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-action {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13px;
+  font-weight: 500;
+  
+  &:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  &.primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--accent) 85%, black);
+      border-color: color-mix(in srgb, var(--accent) 85%, black);
+    }
+  }
+}
+
+// Examples Panel
+.dropdown-panel {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  width: 800px;
+  max-height: 600px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  [data-theme="light"] & {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+
+  strong {
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+  
+  [data-theme="light"] & {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    
+    strong {
+      color: #1f2937;
+    }
+  }
+}
+
+.btn-close {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+  
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.examples-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 540px;
+}
+
+.example-card {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  [data-theme="light"] & {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    
+    &:hover {
+      background: #f9fafb;
+      border-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+  }
+}
+
+.example-header {
+  margin-bottom: 12px;
+}
+
+.example-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 4px;
+  
+  [data-theme="light"] & {
+    color: #3b82f6;
+  }
+}
+
+.example-description {
+  font-size: 12px;
+  color: var(--text-secondary);
+  
+  [data-theme="light"] & {
+    color: #6b7280;
+  }
+}
+
+.example-section {
+  margin-top: 12px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  
+  [data-theme="light"] & {
+    color: #6b7280;
+  }
+}
+
+.section-content {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  
+  &.logical {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--text-primary);
+    
+    [data-theme="light"] & {
+      background: rgba(59, 130, 246, 0.05);
+      color: #1f2937;
+    }
+  }
+  
+  &.drools {
+    background: var(--surface-elevated);
+    color: var(--text-secondary);
+    margin: 0;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.4;
+    
+    [data-theme="light"] & {
+      background: #f9fafb;
+      color: #4b5563;
+    }
+  }
+}
+
+// Textarea
+.textarea-container {
+  position: relative;
+  flex: 1;
+}
+
+.drools-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid var(--accent);
+  border-style: dashed;
+  border-radius: var(--radius);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  transition: all 0.15s;
+  
+  [data-theme="light"] & {
+    background: #ffffff;
+    border-color: #3b82f6;
+    color: #1f2937;
+  }
+  
+  &::placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+    
+    [data-theme="light"] & {
+      color: #9ca3af;
+    }
+  }
+  
+  &:focus {
+    outline: none;
+    border-style: solid;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &:read-only {
+    cursor: default;
+  }
+}
+
+// Hint
+.hint-text {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  
+  [data-theme="light"] & {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+}
