@@ -55,7 +55,13 @@
         </div>
         <div class="example-section">
           <div class="section-label">Logical Rule:</div>
-          <div class="section-content logical">{{ example.logicalRule }}</div>
+          <div class="section-content logical">
+            <app-rule-editor-formatter 
+              *ngIf="getTokenizedLogicalRule().get(example.logicalRule); else plainLogical"
+              [tokens]="getTokenizedLogicalRule().get(example.logicalRule)!" 
+            />
+            <ng-template #plainLogical>{{ example.logicalRule }}</ng-template>
+          </div>
         </div>
         <div class="example-section">
           <div class="section-label">Drools Expression:</div>

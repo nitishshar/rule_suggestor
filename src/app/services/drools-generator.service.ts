@@ -95,28 +95,34 @@ export class DroolsGeneratorService {
                 if (connToken.connectorId === 'openParen' || connToken.connectorId === 'openBracket') {
                   bracketDepth++;
                   foundOpenBracket = true;
+                  i++;
+                  continue;
                 } else if (connToken.connectorId === 'closeParen' || connToken.connectorId === 'closeBracket') {
                   // Add the last value before closing
-                  if (currentValue.trim()) {
-                    listValues.push(this.quoteWithSingleQuotes(currentValue.trim()));
+                  const trimmedValue = currentValue.trim();
+                  if (trimmedValue) {
+                    listValues.push(this.quoteIfString(trimmedValue));
                     currentValue = '';
                   }
                   bracketDepth--;
                   i++;
                   if (bracketDepth === 0) break; // Completed the list
+                  continue;
                 } else if (connToken.connectorId === 'comma') {
                   // End current value, start next
-                  if (currentValue.trim()) {
-                    listValues.push(this.quoteWithSingleQuotes(currentValue.trim()));
+                  const trimmedValue = currentValue.trim();
+                  if (trimmedValue) {
+                    listValues.push(this.quoteIfString(trimmedValue));
                     currentValue = '';
                   }
+                  i++;
+                  continue;
                 } else {
                   // Hit "and" or "or" - stop here
                   break;
                 }
               } else if (tok.type === 'text' || tok.type === 'value') {
-                const txt = tok.displayText.trim();
-                if (txt) currentValue += txt;
+                currentValue += tok.displayText;
               } else if (tok.type === 'dataElement' || tok.type === 'operator') {
                 // Hit another data element or operator - stop
                 break;

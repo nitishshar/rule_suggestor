@@ -268,9 +268,28 @@
     color: var(--text-primary);
     line-height: 1.4;
     
+    // Style the formatter component
+    app-rule-editor-formatter {
+      ::ng-deep .token {
+        font-size: 11px;
+      }
+      
+      ::ng-deep .data-element {
+        background: rgba(59, 130, 246, 0.15);
+        padding: 1px 3px;
+        border-radius: 2px;
+        font-weight: 500;
+      }
+    }
+    
     [data-theme="light"] & {
       background: rgba(59, 130, 246, 0.05);
       color: #1f2937;
+      
+      app-rule-editor-formatter ::ng-deep .data-element {
+        background: rgba(59, 130, 246, 0.2);
+        color: #1e40af;
+      }
     }
   }
   

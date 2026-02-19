@@ -145,7 +145,7 @@ export class GenericRuleEditorComponent implements OnInit, AfterViewInit, Contro
 
 Applicability Criteria:
 1. Balance is not null
-2. Status in (ACTIVE, PENDING)
+2. life cycle status code in (ACTIVE, PENDING)
 
 TRIMS Specific Criteria:
 1. Account Number is present

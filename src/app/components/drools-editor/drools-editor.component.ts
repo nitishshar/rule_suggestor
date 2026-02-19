@@ -8,6 +8,8 @@ import {
   OnInit,
   forwardRef,
   signal,
+  computed,
+  inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -16,11 +18,15 @@ import {
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { RuleTokenizerService } from '../../services/rule-tokenizer.service';
+import { RuleConfigService } from '../../services/rule-config.service';
+import { RuleEditorFormatterComponent } from '../rule-editor-formatter/rule-editor-formatter.component';
+import { RuleToken } from '../../models/token.model';
 
 @Component({
   selector: 'app-drools-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RuleEditorFormatterComponent],
   templateUrl: './drools-editor.component.html',
   styleUrls: ['./drools-editor.component.scss'],
   providers: [
@@ -32,6 +38,9 @@ import {
   ],
 })
 export class DroolsEditorComponent implements OnInit, ControlValueAccessor {
+  private tokenizer = inject(RuleTokenizerService);
+  private configService = inject(RuleConfigService);
+  
   @ViewChild('textarea') textarea!: ElementRef<HTMLTextAreaElement>;
 
   // Configuration inputs
@@ -79,7 +88,7 @@ export class DroolsEditorComponent implements OnInit, ControlValueAccessor {
       title: 'Domain Values - Using "in"',
       description: 'Validate values against predefined list',
       logicalRule: 'Produce Error If life cycle status code not in [ACTIVE,CLOSED,PENDING]',
-      droolsExpression: '<Deposits.Deposits>:(<life cycle status code> not in (\'ACTIVE\', \'CLOSED\', \'PENDING\'))'
+      droolsExpression: '<Deposits.Deposits>:(<life cycle status code> not in ("ACTIVE", "CLOSED", "PENDING"))'
     },
     {
       title: 'Grouped Conditions - Using Parentheses',
@@ -94,6 +103,21 @@ export class DroolsEditorComponent implements OnInit, ControlValueAccessor {
       droolsExpression: '<Deposits.Deposits Contract>:(<Contract Identifier> != null)'
     }
   ];
+  
+  config = signal<any>(null);
+  
+  // Computed tokenized versions of logical rules for highlighting
+  getTokenizedLogicalRule = computed(() => {
+    const cfg = this.config();
+    if (!cfg) return new Map();
+    
+    const map = new Map<string, RuleToken[]>();
+    this.droolsExamples.forEach(example => {
+      const tokenized = this.tokenizer.tokenize(example.logicalRule, cfg);
+      map.set(example.logicalRule, tokenized.tokens);
+    });
+    return map;
+  });
 
   // FormControl integration
   private onChange: (value: string) => void = () => {};
@@ -101,7 +125,10 @@ export class DroolsEditorComponent implements OnInit, ControlValueAccessor {
   disabled = false;
 
   ngOnInit() {
-    // Component ready
+    // Load config for tokenization
+    this.configService.getConfig().subscribe((cfg) => {
+      this.config.set(cfg);
+    });
   }
 
   // ControlValueAccessor implementation
