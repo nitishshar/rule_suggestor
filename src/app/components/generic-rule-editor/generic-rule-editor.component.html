@@ -68,19 +68,38 @@
 
   <!-- Main Input Container -->
   <div class="input-container">
-    <textarea
-      #textarea
-      class="rule-textarea"
-      [class.has-warnings]="hasActiveWarnings()"
-      [attr.placeholder]="placeholder"
-      [value]="ruleText()"
-      [disabled]="disabled"
-      [style.minHeight]="minHeight"
-      (input)="onInput($event)"
-      (keydown)="onKeyDown($event)"
-      (focus)="onFocus()"
-      (blur)="onBlur()"
-    ></textarea>
+    <!-- Textarea Wrapper (for positioning autocomplete) -->
+    <div class="textarea-wrapper">
+      <textarea
+        #textarea
+        class="rule-textarea"
+        [class.has-warnings]="hasActiveWarnings()"
+        [attr.placeholder]="placeholder"
+        [value]="ruleText()"
+        [disabled]="disabled"
+        [style.minHeight]="minHeight"
+        (input)="onInput($event)"
+        (keydown)="onKeyDown($event)"
+        (focus)="onFocus()"
+        (blur)="onBlur()"
+      ></textarea>
+
+      <!-- Autocomplete Suggestions (positioned relative to textarea) -->
+      <div class="suggestions-dropdown" *ngIf="showSuggestions()">
+        <ul #suggestionList class="suggestions-list">
+          <li
+            *ngFor="let item of suggestions(); trackBy: trackBySuggestion; let i = index"
+            class="suggestion-item"
+            [class.selected]="i === selectedIndex()"
+            (mousedown)="$event.preventDefault(); selectSuggestion(item)"
+          >
+            <span class="suggestion-kind" [attr.data-kind]="item.kind">{{ item.kind }}</span>
+            <span class="suggestion-text">{{ item.displayText }}</span>
+            <span class="suggestion-desc" *ngIf="item.description">{{ item.description }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
 
     <!-- Token Preview -->
     <div class="token-preview" *ngIf="showTokenPreview && ruleText().trim() && formattedTokens().length > 0">
@@ -107,34 +126,21 @@
         <span class="warning-text">{{ deviationWarning() }}</span>
         <button type="button" class="btn-dismiss" (click)="clearWarning('deviation')">✕</button>
       </div>
-
-      <!-- Pattern Suggestions -->
-      <div class="pattern-suggestions" *ngIf="patternSuggestions().length > 0">
-        <div class="suggestions-header">💡 Try these patterns instead:</div>
-        <div class="pattern-suggestion-item" *ngFor="let ps of patternSuggestions()">
-          <div class="pattern-name">{{ ps.name }}</div>
-          <div class="pattern-reason">{{ ps.reason }}</div>
-          <div class="pattern-example" (click)="useExample(ps.example)">
-            <code>{{ ps.example }}</code>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <!-- Autocomplete Suggestions -->
-    <div class="suggestions-dropdown" *ngIf="showSuggestions()">
-      <ul #suggestionList class="suggestions-list">
-        <li
-          *ngFor="let item of suggestions(); trackBy: trackBySuggestion; let i = index"
-          class="suggestion-item"
-          [class.selected]="i === selectedIndex()"
-          (mousedown)="$event.preventDefault(); selectSuggestion(item)"
-        >
-          <span class="suggestion-kind" [attr.data-kind]="item.kind">{{ item.kind }}</span>
-          <span class="suggestion-text">{{ item.displayText }}</span>
-          <span class="suggestion-desc" *ngIf="item.description">{{ item.description }}</span>
-        </li>
-      </ul>
+    <!-- Pattern Suggestions (outside warning-messages) -->
+    <div class="pattern-suggestions" *ngIf="patternSuggestions().length > 0 && !dismissedPatternSuggestions()">
+      <div class="suggestions-header-row">
+        <div class="suggestions-header">💡 Try these patterns instead:</div>
+        <button type="button" class="btn-dismiss-suggestions" (click)="dismissPatternSuggestions()">✕</button>
+      </div>
+      <div class="pattern-suggestion-item" *ngFor="let ps of patternSuggestions()">
+        <div class="pattern-name">{{ ps.name }}</div>
+        <div class="pattern-reason">{{ ps.reason }}</div>
+        <div class="pattern-example" (click)="useExample(ps.example)">
+          <code>{{ ps.example }}</code>
+        </div>
+      </div>
     </div>
   </div>
 </div>

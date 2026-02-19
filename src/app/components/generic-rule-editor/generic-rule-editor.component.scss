@@ -222,6 +222,11 @@
   flex-direction: column;
 }
 
+.textarea-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .rule-textarea {
   position: relative;
   z-index: 2;
@@ -337,11 +342,33 @@
   border: 1px solid rgba(59, 130, 246, 0.3);
   border-radius: 4px;
 
+  .suggestions-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
   .suggestions-header {
     font-size: 12px;
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 8px;
+  }
+
+  .btn-dismiss-suggestions {
+    padding: 2px 6px;
+    background: transparent;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    border-radius: 3px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+
+    &:hover {
+      background: rgba(59, 130, 246, 0.2);
+    }
   }
 
   .pattern-suggestion-item {

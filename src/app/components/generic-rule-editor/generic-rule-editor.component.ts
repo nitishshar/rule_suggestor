@@ -86,6 +86,7 @@ export class GenericRuleEditorComponent implements OnInit, AfterViewInit, Contro
   dismissedCompletenessWarning = signal(false);
   dismissedBracketWarning = signal(false);
   dismissedDeviationWarning = signal(false);
+  dismissedPatternSuggestions = signal(false);
 
   // Computed
   tokenized = computed(() => {
@@ -202,9 +203,11 @@ TRIMS Specific Criteria:
     this.ruleText.set(value);
     this.cursorPosition.set(ta.selectionStart);
     
-    // Reset dismissed warnings
+    // Reset dismissed warnings when user types
     this.dismissedCompletenessWarning.set(false);
     this.dismissedBracketWarning.set(false);
+    this.dismissedDeviationWarning.set(false);
+    this.dismissedPatternSuggestions.set(false);
     
     this.updateSuggestions(value, ta.selectionStart);
     
@@ -319,6 +322,10 @@ TRIMS Specific Criteria:
     this.emitValidation();
   }
 
+  dismissPatternSuggestions() {
+    this.dismissedPatternSuggestions.set(true);
+  }
+
   private emitValidation() {
     const warnings: string[] = [];
     
@@ -331,26 +338,28 @@ TRIMS Specific Criteria:
     
     // Check pattern match and update deviation warning/suggestions
     const patternResult = this._patternMatchResult();
-    if (patternResult && !patternResult.matched && !this.dismissedDeviationWarning()) {
-      if (patternResult.deviationReason) {
-        this.deviationWarning.set(patternResult.deviationReason);
-      }
-      
-      if (patternResult.suggestions && patternResult.suggestions.length > 0) {
-        this.patternSuggestions.set(
-          patternResult.suggestions.map(s => ({
-            name: s.pattern.name,
-            example: s.pattern.exampleText,
-            reason: s.reason
-          }))
-        );
-      } else {
-        this.patternSuggestions.set([]);
-      }
+    
+    // First, always clear based on pattern match status
+    if (!patternResult || patternResult.matched) {
+      // Pattern matches or no result - clear everything
+      this.deviationWarning.set(null);
+      this.patternSuggestions.set([]);
     } else {
-      if (!this.dismissedDeviationWarning()) {
-        this.deviationWarning.set(null);
-        this.patternSuggestions.set([]);
+      // Pattern doesn't match - show warning and suggestions (unless dismissed)
+      if (!this.dismissedDeviationWarning() && patternResult.deviationReason) {
+        this.deviationWarning.set(patternResult.deviationReason);
+        
+        if (patternResult.suggestions && patternResult.suggestions.length > 0) {
+          this.patternSuggestions.set(
+            patternResult.suggestions.map(s => ({
+              name: s.pattern.name,
+              example: s.pattern.exampleText,
+              reason: s.reason
+            }))
+          );
+        } else {
+          this.patternSuggestions.set([]);
+        }
       }
     }
     
