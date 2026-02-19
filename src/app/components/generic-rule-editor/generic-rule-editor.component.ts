@@ -115,6 +115,14 @@ export class GenericRuleEditorComponent implements OnInit, AfterViewInit, Contro
     return result.valid ? null : result.message;
   });
 
+  private _patternMatchResult = computed(() => {
+    const cfg = this.config();
+    if (!cfg) return null;
+    const tok = this.tokenized();
+    if (!tok || tok.tokens.length === 0) return null;
+    return this.patternMatch.checkPattern(tok.tokens, cfg);
+  });
+
   bracketWarning = computed(() => {
     if (this.dismissedBracketWarning()) return null;
     return this._bracketWarningInternal();
@@ -320,6 +328,32 @@ TRIMS Specific Criteria:
     if (this.bracketWarning()) {
       warnings.push(this.bracketWarning()!);
     }
+    
+    // Check pattern match and update deviation warning/suggestions
+    const patternResult = this._patternMatchResult();
+    if (patternResult && !patternResult.matched && !this.dismissedDeviationWarning()) {
+      if (patternResult.deviationReason) {
+        this.deviationWarning.set(patternResult.deviationReason);
+      }
+      
+      if (patternResult.suggestions && patternResult.suggestions.length > 0) {
+        this.patternSuggestions.set(
+          patternResult.suggestions.map(s => ({
+            name: s.pattern.name,
+            example: s.pattern.exampleText,
+            reason: s.reason
+          }))
+        );
+      } else {
+        this.patternSuggestions.set([]);
+      }
+    } else {
+      if (!this.dismissedDeviationWarning()) {
+        this.deviationWarning.set(null);
+        this.patternSuggestions.set([]);
+      }
+    }
+    
     if (this.deviationWarning()) {
       warnings.push(this.deviationWarning()!);
     }
@@ -332,24 +366,146 @@ TRIMS Specific Criteria:
 
   private validateRuleCompleteness(tokens: RuleToken[], config: RuleSuggestorConfig): { valid: boolean; message?: string } {
     if (tokens.length === 0) {
-      return { valid: false, message: 'Rule is empty.' };
+      return { valid: false, message: 'Rule is empty. Please enter a rule expression.' };
     }
 
     const hasPhrase = tokens.some(t => t.type === 'phrase');
     if (!hasPhrase) {
-      return { valid: false, message: 'Rule must start with a phrase.' };
+      return { valid: false, message: 'Rule must start with a phrase (e.g., "Produce Error If").' };
     }
 
+    // Check for at least one data element
     const dataElements = tokens.filter(t => t.type === 'dataElement');
     if (dataElements.length === 0) {
+      // Only show this warning if user has typed more than just the phrase
       const nonPhraseTokens = tokens.filter(t => t.type !== 'phrase' && (t.type !== 'text' || t.displayText.trim() !== ''));
       if (nonPhraseTokens.length > 0) {
         return { valid: false, message: 'Rule must contain at least one data element.' };
       }
+      // If only phrase, don't show warning yet
       return { valid: true };
     }
 
+    // Check if rule ends with a connector (incomplete condition)
+    const lastNonSpaceToken = this.getLastNonSpaceToken(tokens);
+    if (lastNonSpaceToken) {
+      if (lastNonSpaceToken.type === 'connector') {
+        const connToken = lastNonSpaceToken as ConnectorToken;
+        // Only flag "and", "or", and "(" as incomplete at the end
+        const incompleteConnectors = ['and', 'or', 'openParen'];
+        if (incompleteConnectors.includes(connToken.connectorId)) {
+          const connDef = config.logicalConnectors.find(c => c.id === connToken.connectorId);
+          const connText = connDef?.displayText || 'connector';
+          return { valid: false, message: `Rule ends with "${connText}" but has no following condition.` };
+        }
+      }
+      
+      // Check if rule ends with an operator that needs a value
+      if (lastNonSpaceToken.type === 'operator') {
+        const opToken = lastNonSpaceToken as OperatorToken;
+        const opDef = config.operators.find(o => o.id === opToken.operatorId);
+        const droolsOp = opDef?.droolsOperator;
+        const noValueOps = ['== null', '!= null', 'empty', 'not empty', 'nullOrEmpty', 'notNullOrEmpty'];
+        
+        if (droolsOp && !noValueOps.includes(droolsOp)) {
+          if (droolsOp === 'in' || droolsOp === 'not in') {
+            return { valid: false, message: `Operator "${opToken.displayText}" must be followed by a list in parentheses.` };
+          }
+          return { valid: false, message: `Operator "${opToken.displayText}" is missing a value.` };
+        }
+      }
+    }
+
+    // First pass: identify data elements that are used as values (after operators)
+    const dataElementsUsedAsValues = new Set<number>();
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].type === 'operator') {
+        // Check if next non-space token is a data element (used as value)
+        let nextIdx = i + 1;
+        while (nextIdx < tokens.length && tokens[nextIdx].type === 'text' && tokens[nextIdx].displayText.trim() === '') {
+          nextIdx++;
+        }
+        if (nextIdx < tokens.length && tokens[nextIdx].type === 'dataElement') {
+          dataElementsUsedAsValues.add(nextIdx);
+        }
+      }
+    }
+
+    // Check each data element has an operator (unless it's used as a value)
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].type === 'dataElement') {
+        const dataEl = tokens[i] as DataElementToken;
+        
+        // Skip validation if this data element is being used as a value in a comparison
+        if (dataElementsUsedAsValues.has(i)) {
+          continue;
+        }
+        
+        // Look for operator after data element (skip text/spaces)
+        let j = i + 1;
+        while (j < tokens.length && tokens[j].type === 'text' && tokens[j].displayText.trim() === '') {
+          j++;
+        }
+        
+        if (j >= tokens.length || tokens[j].type !== 'operator') {
+          return { valid: false, message: `Data element "${dataEl.displayValue}" is missing an operator.` };
+        }
+
+        // Check if operator needs a value
+        const opToken = tokens[j] as OperatorToken;
+        const opDef = config.operators.find(o => o.id === opToken.operatorId);
+        const droolsOp = opDef?.droolsOperator;
+        
+        // Operators that don't need values
+        const noValueOps = ['== null', '!= null', 'empty', 'not empty', 'nullOrEmpty', 'notNullOrEmpty'];
+        
+        if (droolsOp && !noValueOps.includes(droolsOp)) {
+          // This operator needs a value - check if there's text/value/dataElement after it
+          let k = j + 1;
+          while (k < tokens.length && tokens[k].type === 'text' && tokens[k].displayText.trim() === '') {
+            k++;
+          }
+          
+          // Special case: "in" and "not in" operators are followed by "(" or "[" which is valid
+          if (droolsOp === 'in' || droolsOp === 'not in') {
+            // Check if followed by "(" or "["
+            if (k < tokens.length && tokens[k].type === 'connector') {
+              const connToken = tokens[k] as ConnectorToken;
+              if (connToken.connectorId === 'openParen' || connToken.connectorId === 'openBracket') {
+                // Valid - "in (" or "in [" pattern detected
+                continue;
+              }
+            }
+            // If not followed by "(" or "[", it's missing the list
+            return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" must be followed by a list in parentheses or brackets.` };
+          }
+          
+          // For other operators, check if next token is value, text, or dataElement (for comparisons)
+          if (k >= tokens.length || (tokens[k].type !== 'text' && tokens[k].type !== 'value' && tokens[k].type !== 'dataElement')) {
+            return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" is missing a value.` };
+          }
+          
+          // Make sure the value is not empty (unless it's a data element)
+          if (tokens[k].type !== 'dataElement') {
+            const valueText = tokens[k].displayText.trim();
+            if (!valueText) {
+              return { valid: false, message: `Operator "${opToken.displayText}" for "${dataEl.displayValue}" has an empty value.` };
+            }
+          }
+        }
+      }
+    }
+
     return { valid: true };
+  }
+
+  private getLastNonSpaceToken(tokens: RuleToken[]): RuleToken | null {
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      if (tokens[i].type !== 'text' || tokens[i].displayText.trim() !== '') {
+        return tokens[i];
+      }
+    }
+    return null;
   }
 
   private validateBrackets(text: string): { valid: boolean; message?: string } {

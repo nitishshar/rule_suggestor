@@ -107,6 +107,18 @@
         <span class="warning-text">{{ deviationWarning() }}</span>
         <button type="button" class="btn-dismiss" (click)="clearWarning('deviation')">✕</button>
       </div>
+
+      <!-- Pattern Suggestions -->
+      <div class="pattern-suggestions" *ngIf="patternSuggestions().length > 0">
+        <div class="suggestions-header">💡 Try these patterns instead:</div>
+        <div class="pattern-suggestion-item" *ngFor="let ps of patternSuggestions()">
+          <div class="pattern-name">{{ ps.name }}</div>
+          <div class="pattern-reason">{{ ps.reason }}</div>
+          <div class="pattern-example" (click)="useExample(ps.example)">
+            <code>{{ ps.example }}</code>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Autocomplete Suggestions -->
