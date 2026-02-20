@@ -47,15 +47,17 @@ export class RuleTokenizerService {
       const phraseMatch = this.matchPhrase(rest, config.phraseSuggestions);
       if (phraseMatch) {
         const phrase = phraseMatch.phrase;
+        // Capture the actual text the user typed (preserving their casing)
+        const actualTypedText = rawText.substring(i, i + phraseMatch.len);
         const t: PhraseToken = {
           type: 'phrase',
           phraseId: phrase.id,
-          displayText: phrase.displayText,
+          displayText: actualTypedText,
           startIndex: i,
           endIndex: i + phraseMatch.len,
         };
         tokens.push(t);
-        displayText += phrase.displayText;
+        displayText += actualTypedText;
         i += phraseMatch.len;
         continue;
       }
