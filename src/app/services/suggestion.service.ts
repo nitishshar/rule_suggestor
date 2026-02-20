@@ -257,8 +257,19 @@ export class SuggestionService {
     }
 
     // After "and " or "or " or "(" -> data element
+    let afterConnectorMatch = trimmed.match(/\s(and|or)\s+(\w*)$/i);
+    if (afterConnectorMatch) {
+      const partialDataElement = afterConnectorMatch[2] || '';
+      return { items: this.getDataElementSuggestions(config, partialDataElement), prefix: partialDataElement };
+    }
+    afterConnectorMatch = trimmed.match(/\s\(\s*(\w*)$/);
+    if (afterConnectorMatch) {
+      const partialDataElement = afterConnectorMatch[1] || '';
+      return { items: this.getDataElementSuggestions(config, partialDataElement), prefix: partialDataElement };
+    }
+    // Just after connector with no text yet
     if (/\s(and|or)\s*$/i.test(trimmed) || /\s\(\s*$/.test(trimmed)) {
-      return { items: this.getDataElementSuggestions(config, lastWord), prefix: lastWord };
+      return { items: this.getDataElementSuggestions(config, ''), prefix: '' };
     }
 
     // Typing prefix of "and" or "or" after a condition (e.g. "equals 890 an") -> suggest and, or, (
